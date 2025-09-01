@@ -1,106 +1,105 @@
 "use client";
 
 import React, { useState } from 'react';
-import {
-  Box,
-  Button,
-  Checkbox,
-  Container,
-  FormControlLabel,
-  Divider,
-  FormLabel,
-  FormControl,
-  Link,
-  TextField,
-  Typography,
-  Paper,
-  InputAdornment,
-  IconButton,
-} from '@mui/material';
-import {
-  Visibility,
-  VisibilityOff,
-  Google,
-  Facebook
-} from '@mui/icons-material';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-    background: {
-      default: '#f5f5f5',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h5: {
-      fontWeight: 600,
-    },
-    body2: {
-      fontSize: '0.875rem',
-    },
-  },
-  shape: {
-    borderRadius: 6,
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: 'none',
-          fontSize: '0.875rem',
-        },
-      },
-    },
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          '& .MuiInputBase-input': {
-            fontSize: '0.875rem',
-            padding: '10px 14px',
-          },
-        },
-      },
-    },
-  },
-});
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
+import { Visibility, VisibilityOff, Google, Facebook } from '@mui/icons-material';
 
 const SignInPage = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
     
-    // Simple validation
+    // Clear error when field is updated
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const validateForm = () => {
     const newErrors = {};
-    if (!email) newErrors.email = 'Email is required';
-    if (!password) newErrors.password = 'Password is required';
     
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      setIsSubmitting(false);
-      return;
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+    } else if (!/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email';
     }
     
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Sign in attempted with:', { email, password, rememberMe });
-      setIsSubmitting(false);
-      // Here you would handle successful login
-      alert('Sign in successful!');
-    }, 1000);
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+  
+    setIsLoading(true);
+  
+    try {
+      const response = await fetch('/api/user/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password
+        }),
+      });
+  
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(text || 'Invalid server response');
+      }
+  
+      const data = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Login failed');
+      }
+  
+      if (!data.token) {
+        throw new Error('Authentication token missing');
+      }
+  
+      // Store token
+      localStorage.setItem('authToken', data.token);
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true');
+      }
+  
+      toast.success('Logged in successfully!');
+      router.push('/dashboard'); // Redirect to dashboard or home page
+  
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error(error.message || 'Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleClickShowPassword = () => {
@@ -108,153 +107,116 @@ const SignInPage = () => {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <Box
-        sx={{
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          py: 2,
-          px: 1,
-        }}
-      >
-        <Container maxWidth="xs" sx={{ padding: 0 }}>
-          <Paper
-            elevation={8}
-            sx={{
-              p: 3,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              borderRadius: 2,
-            }}
-          >
-            <Typography component="h1" variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
-              Sign in
-            </Typography>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center py-4 px-4">
+      <div className="max-w-xs w-full">
+        <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
+          <h1 className="text-xl font-bold mb-4">Sign in</h1>
+          
+          <form onSubmit={handleSubmit} className="w-full">
+            <div className="mb-3">
+              <label htmlFor="email" className="block text-sm font-bold text-gray-700 mb-1">
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="your@email.com"
+                value={formData.email}
+                onChange={handleChange}
+                className={`w-full p-2 text-sm border rounded ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
+              />
+              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+            </div>
             
-            <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
-              <FormControl fullWidth sx={{ mb: 1.5 }}>
-                <FormLabel htmlFor="email" sx={{ mb: 0.5, fontSize: '0.875rem', fontWeight: 'bold' }}>
-                  Email
-                </FormLabel>
-                <TextField
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  error={!!errors.email}
-                  helperText={errors.email}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                />
-              </FormControl>
-              
-              <FormControl fullWidth sx={{ mb: 1 }}>
-                <FormLabel htmlFor="password" sx={{ mb: 0.5, fontSize: '0.875rem', fontWeight: 'bold' }}>
-                  Password
-                </FormLabel>
-                <TextField
+            <div className="mb-2">
+              <label htmlFor="password" className="block text-sm font-bold text-gray-700 mb-1">
+                Password
+              </label>
+              <div className="relative">
+                <input
                   id="password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  error={!!errors.password}
-                  helperText={errors.password}
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          aria-label="toggle password visibility"
-                          onClick={handleClickShowPassword}
-                          edge="end"
-                          size="small"
-                        >
-                          {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
+                  value={formData.password}
+                  onChange={handleChange}
+                  className={`w-full p-2 pr-8 text-sm border rounded ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
                 />
-              </FormControl>
-              
-              <FormControlLabel
-                control={
-                  <Checkbox 
-                    checked={rememberMe} 
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    color="primary"
-                    size="small"
-                  />
-                }
-                label="Remember me"
-                sx={{ mb: 1, '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
+                <button
+                  type="button"
+                  onClick={handleClickShowPassword}
+                  className="absolute inset-y-0 right-0 pr-2 flex items-center"
+                >
+                  {showPassword ? <VisibilityOff className="text-gray-500" fontSize="small" /> : <Visibility className="text-gray-500" fontSize="small" />}
+                </button>
+              </div>
+              {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+            </div>
+            
+            <div className="flex items-center mb-3">
+              <input
+                id="rememberMe"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
-              
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                disabled={isSubmitting}
-                sx={{ mb: 2, py: 0.75 }}
+              <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-700">
+                Remember me
+              </label>
+            </div>
+            
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={`w-full py-2 px-4 rounded text-sm font-medium mb-3 ${
+                isLoading 
+                  ? 'bg-blue-400 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+            >
+              {isLoading ? 'Signing in...' : 'Sign in'}
+            </button>
+            
+            <div className="text-center mb-3">
+              <a href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+                Forgot your password?
+              </a>
+            </div>
+            
+            <div className="flex items-center my-3">
+              <div className="flex-grow border-t border-gray-300"></div>
+              <span className="mx-2 text-xs text-gray-500">or</span>
+              <div className="flex-grow border-t border-gray-300"></div>
+            </div>
+            
+            <div className="flex flex-col gap-2 mb-3">
+              <button
+                type="button"
+                className="w-full py-1.5 px-4 border border-gray-300 rounded text-sm flex items-center justify-center"
               >
-                {isSubmitting ? 'Signing in...' : 'Sign in'}
-              </Button>
-              
-              <Box sx={{ textAlign: 'center', mb: 2 }}>
-                <Link href="/ForgotPassword" variant="body2" sx={{ fontSize: '0.875rem' }}>
-                  Forgot your password?
-                </Link>
-              </Box>
-              
-              <Divider sx={{ my: 2, fontSize: '0.75rem' }}>or</Divider>
-              
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<Google fontSize="small" />}
-                  size="small"
-                  sx={{ py: 0.5 }}
-                >
-                  Sign in with Google
-                </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<Facebook fontSize="small" />}
-                  size="small"
-                  sx={{ py: 0.5 }}
-                >
-                  Sign in with Facebook
-                </Button>
-              </Box>
-              
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="body2" component="span" sx={{ fontSize: '0.875rem' }}>
-                  Don't have an account?{' '}
-                </Typography>
-                <Link href="/SignUpPage" variant="body2" fontWeight="bold" sx={{ fontSize: '0.875rem' }}>
-                  Sign up
-                </Link>
-              </Box>
-            </Box>
-          </Paper>
-          
-          <Typography variant="body2" color="textSecondary" align="center" sx={{ mt: 2, fontSize: '0.75rem' }}>
-            © {new Date().getFullYear()} DATTREO. All rights reserved.
-          </Typography>
-        </Container>
-      </Box>
-    </ThemeProvider>
+                <Google className="text-gray-500 mr-2" fontSize="small" />
+                Sign in with Google
+              </button>
+            </div>
+            
+            <div className="text-center">
+              <span className="text-sm text-gray-600">
+                Don't have an account?{' '}
+              </span>
+              <a href="/SignInPage" className="text-sm font-bold text-blue-600 hover:underline">
+                Sign up
+              </a>
+            </div>
+          </form>
+        </div>
+        
+        <p className="text-center text-xs text-gray-500 mt-2">
+          © {new Date().getFullYear()} DATTREO. All rights reserved.
+        </p>
+      </div>
+    </div>
   );
 };
 

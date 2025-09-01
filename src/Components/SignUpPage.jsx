@@ -1,135 +1,36 @@
 "use client";
 
 import React, { useState } from 'react';
-import {
-  Box,
-  Button,
-  Checkbox,
-  Container,
-  FormControlLabel,
-  FormLabel,
-  FormControl,
-  Link,
-  TextField,
-  Typography,
-  Paper,
-  InputAdornment,
-  IconButton,
-  MenuItem,
-  Select,
-  FormHelperText,
-  Chip,
-  Grid,
-} from '@mui/material';
-import {
-  Visibility,
-  VisibilityOff,
-  CloudUpload,
-  Close,
-} from '@mui/icons-material';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-    background: {
-      default: '#f8fafc',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h6: {
-      fontWeight: 600,
-      fontSize: '1rem',
-    },
-    body2: {
-      fontSize: '0.75rem',
-    },
-  },
-  shape: {
-    borderRadius: 4,
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: 'none',
-          fontSize: '0.75rem',
-          padding: '4px 8px',
-        },
-      },
-    },
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          '& .MuiInputBase-input': {
-            fontSize: '0.75rem',
-            padding: '6px 8px',
-            height: '1em',
-          },
-          '& .MuiFormHelperText-root': {
-            fontSize: '0.65rem',
-            marginTop: '2px',
-          },
-        },
-      },
-    },
-    MuiSelect: {
-      styleOverrides: {
-        root: {
-          fontSize: '0.75rem',
-          '& .MuiSelect-select': {
-            padding: '6px 32px 6px 8px',
-          },
-        },
-      },
-    },
-    MuiFormLabel: {
-      styleOverrides: {
-        root: {
-          fontSize: '0.75rem',
-          fontWeight: 'bold',
-          marginBottom: '2px',
-          color: '#374151',
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-        },
-      },
-    },
-  },
-});
+import { CloudUpload, Close, Visibility, VisibilityOff, Business } from '@mui/icons-material';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 
 const SignUpPage = () => {
+  const router = useRouter();
   const [formData, setFormData] = useState({
-    fullName: '',
+    firstName: '',
+    lastName: '',
     email: '',
     mobile: '',
     password: '',
-    role: '',
-    companyName: '',
+    role: 'Corporate', // Default role
+  });
+  const [companyData, setCompanyData] = useState({
+    name: '',
     registrationNumber: '',
     taxId: '',
     industryType: '',
-    street: '',
-    city: '',
-    country: '',
-    website: '',
+    address: {
+      street: '',
+      city: '',
+      country: ''
+    },
+    website: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [logoFile, setLogoFile] = useState(null);
-  const [kycFiles, setKycFiles] = useState([]);
+  const [agreeTerms, setAgreeTerms] = useState(false);
 
   const industryTypes = [
     'Retail', 'Manufacturing', 'Technology', 'Healthcare', 'Finance',
@@ -143,11 +44,33 @@ const SignUpPage = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
     
+    if (name.startsWith('company.')) {
+      // Handle nested company data
+      const companyField = name.split('.')[1];
+      if (companyField === 'street' || companyField === 'city' || companyField === 'country') {
+        setCompanyData(prev => ({
+          ...prev,
+          address: {
+            ...prev.address,
+            [companyField]: value
+          }
+        }));
+      } else {
+        setCompanyData(prev => ({
+          ...prev,
+          [companyField]: value
+        }));
+      }
+    } else {
+      // Handle user data
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+    
+    // Clear error when field is updated
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -156,54 +79,102 @@ const SignUpPage = () => {
     }
   };
 
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) setLogoFile(file);
-  };
-
-  const handleKycUpload = (e) => {
-    const files = Array.from(e.target.files);
-    setKycFiles(prev => [...prev, ...files]);
-  };
-
-  const removeKycFile = (index) => {
-    setKycFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
+  const validateForm = () => {
     const newErrors = {};
-    if (!formData.fullName) newErrors.fullName = 'Full name is required';
+    
+    // User validation
+    if (!formData.firstName) newErrors.firstName = 'First name is required';
+    if (!formData.lastName) newErrors.lastName = 'Last name is required';
     if (!formData.email) newErrors.email = 'Email is required';
     if (!formData.mobile) newErrors.mobile = 'Mobile number is required';
     if (!formData.password) newErrors.password = 'Password is required';
-    if (!formData.role) newErrors.role = 'Please select a role';
+    if (formData.password && formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
+    if (!formData.role) newErrors.role = 'Role is required';
     
-    if (formData.role && formData.role !== 'Admin') {
-      if (!formData.companyName) newErrors.companyName = 'Company name is required';
-      if (!formData.registrationNumber) newErrors.registrationNumber = 'Registration number is required';
-      if (!formData.taxId) newErrors.taxId = 'Tax ID is required';
-      if (!formData.industryType) newErrors.industryType = 'Industry type is required';
-      if (!formData.street) newErrors.street = 'Street address is required';
-      if (!formData.city) newErrors.city = 'City is required';
-      if (!formData.country) newErrors.country = 'Country is required';
+    // Email format validation
+    const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
+    if (formData.email && !emailRegex.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email';
     }
     
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      setIsSubmitting(false);
+    // Company validation (if role requires company)
+    if (formData.role && formData.role !== 'Admin') {
+      if (!companyData.name) newErrors.companyName = 'Company name is required';
+      if (!companyData.registrationNumber) newErrors.registrationNumber = 'Registration number is required';
+      if (!companyData.taxId) newErrors.taxId = 'Tax ID is required';
+      if (!companyData.industryType) newErrors.industryType = 'Industry type is required';
+      if (!companyData.address.street) newErrors.street = 'Street address is required';
+      if (!companyData.address.city) newErrors.city = 'City is required';
+      if (!companyData.address.country) newErrors.country = 'Country is required';
+    }
+    
+    if (!agreeTerms) newErrors.agreeTerms = 'You must agree to the terms and conditions';
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      toast.error('Please fix the errors in the form');
       return;
     }
     
-    setTimeout(() => {
-      console.log('Sign up data:', { ...formData, logoFile, kycFiles });
+    setIsSubmitting(true);
+    
+    try {
+      // Prepare company details if needed
+      let companyDetails = null;
+      if (formData.role !== 'Admin') {
+        companyDetails = {
+          name: companyData.name,
+          registrationNumber: companyData.registrationNumber,
+          taxId: companyData.taxId,
+          industryType: companyData.industryType,
+          address: {
+            street: companyData.address.street,
+            city: companyData.address.city,
+            country: companyData.address.country
+          },
+          website: companyData.website
+        };
+      }
+  
+      // Create user with embedded company details
+      const userResponse = await fetch('/api/user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          email: formData.email.trim().toLowerCase(),
+          mobile: formData.mobile.trim(),
+          password: formData.password,
+          role: formData.role,
+          companyDetails: companyDetails
+        }),
+      });
+      
+      const userResult = await userResponse.json();
+      
+      if (!userResponse.ok) {
+        throw new Error(userResult.error || 'Failed to create user account');
+      }
+      
+      toast.success('Account created successfully! Please check your email for verification.');
+      router.push('/SignInPage');
+      
+    } catch (error) {
+      console.error('Signup error:', error);
+      toast.error(error.message || 'Registration failed. Please try again.');
+    } finally {
       setIsSubmitting(false);
-      alert('Account created successfully!');
-    }, 1000);
+    }
   };
-
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
   };
@@ -211,362 +182,264 @@ const SignUpPage = () => {
   const showCompanyForm = formData.role && formData.role !== 'Admin';
 
   return (
-    <ThemeProvider theme={theme}>
-      <Box
-        sx={{
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          py: 1,
-          px: 1,
-        }}
-      >
-        <Container maxWidth="sm" sx={{ p: 0 }}>
-          <Paper
-            sx={{
-              p: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              borderRadius: 2,
-            }}
-          >
-            <Typography component="h1" variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>
-              Create Account
-            </Typography>
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center py-8 px-4">
+      <div className={`max-w-5xl w-full transition-all duration-500 ${showCompanyForm ? 'flex gap-6' : ''}`}>
+        {/* Left Column - Always visible */}
+        <div className={`bg-white p-6 rounded-lg shadow-md ${showCompanyForm ? 'w-1/2' : 'w-full mx-auto'}`}>
+          <div className="flex flex-col items-center">
+            <h1 className="text-xl font-bold mb-4 text-gray-800">Create Account</h1>
             
-            <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold', fontSize: '0.8rem', color: '#374151' }}>
-                Personal Information
-              </Typography>
+            <form onSubmit={handleSubmit} className="w-full">
+              <h2 className="text-sm font-bold mb-3 text-gray-700 border-b pb-2">Personal Information</h2>
               
-              <Grid container spacing={1} sx={{ mb: 1 }}>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth error={!!errors.fullName}>
-                    <FormLabel>Full Name *</FormLabel>
-                    <TextField
-                      name="fullName"
-                      placeholder="Nikshan"
-                      value={formData.fullName}
-                      onChange={handleChange}
-                      error={!!errors.fullName}
-                      helperText={errors.fullName}
-                      size="small"
-                    />
-                  </FormControl>
-                </Grid>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                <div className="w-full">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">First Name *</label>
+                  <input
+                    name="firstName"
+                    placeholder="John"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className={`w-full p-2.5 text-sm border rounded-md ${errors.firstName ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                  {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
+                </div>
                 
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth error={!!errors.email}>
-                    <FormLabel>Email Address *</FormLabel>
-                    <TextField
-                      name="email"
-                      type="email"
-                      placeholder="Nikshan@email.com"
-                      value={formData.email}
-                      onChange={handleChange}
-                      error={!!errors.email}
-                      helperText={errors.email}
-                      size="small"
-                    />
-                  </FormControl>
-                </Grid>
+                <div className="w-full">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Last Name *</label>
+                  <input
+                    name="lastName"
+                    placeholder="Doe"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className={`w-full p-2.5 text-sm border rounded-md ${errors.lastName ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                  {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
+                </div>
                 
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth error={!!errors.mobile}>
-                    <FormLabel>Mobile Number *</FormLabel>
-                    <TextField
-                      name="mobile"
-                      placeholder="+94 77 123 4567"
-                      value={formData.mobile}
-                      onChange={handleChange}
-                      error={!!errors.mobile}
-                      helperText={errors.mobile}
-                      size="small"
-                    />
-                  </FormControl>
-                </Grid>
+                <div className="w-full">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Email Address *</label>
+                  <input
+                    name="email"
+                    type="email"
+                    placeholder="john.doe@email.com"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className={`w-full p-2.5 text-sm border rounded-md ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                  {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                </div>
                 
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth error={!!errors.password}>
-                    <FormLabel>Password *</FormLabel>
-                    <TextField
+                <div className="w-full">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Mobile Number *</label>
+                  <input
+                    name="mobile"
+                    placeholder="+94 77 123 4567"
+                    value={formData.mobile}
+                    onChange={handleChange}
+                    className={`w-full p-2.5 text-sm border rounded-md ${errors.mobile ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                  {errors.mobile && <p className="text-red-500 text-xs mt-1">{errors.mobile}</p>}
+                </div>
+                
+                <div className="w-full">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Password *</label>
+                  <div className="relative">
+                    <input
                       name="password"
                       type={showPassword ? 'text' : 'password'}
                       placeholder="••••••"
                       value={formData.password}
                       onChange={handleChange}
-                      error={!!errors.password}
-                      helperText={errors.password}
-                      size="small"
-                      InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton
-                              onClick={handleClickShowPassword}
-                              edge="end"
-                              size="small"
-                              sx={{ fontSize: '0.9rem' }}
-                            >
-                              {showPassword ? <VisibilityOff fontSize="inherit" /> : <Visibility fontSize="inherit" />}
-                            </IconButton>
-                          </InputAdornment>
-                        ),
-                      }}
+                      className={`w-full p-2.5 pr-8 text-sm border rounded-md ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
                     />
-                  </FormControl>
-                </Grid>
-              </Grid>
-              
-              <Typography variant="subtitle2" sx={{ mb: 1, mt: 1.5, fontWeight: 'bold', fontSize: '0.8rem', color: '#374151' }}>
-                Role & Company Selection
-              </Typography>
-              
-              <Grid container spacing={1} sx={{ mb: 1 }}>
-                <Grid item xs={12}>
-                  <FormControl fullWidth error={!!errors.role}>
-                    <FormLabel>Select Role *</FormLabel>
-                    <Select
-                      name="role"
-                      value={formData.role}
-                      onChange={handleChange}
-                      displayEmpty
-                      size="small"
+                    <button
+                      type="button"
+                      onClick={handleClickShowPassword}
+                      className="absolute inset-y-0 right-0 pr-2 flex items-center text-sm"
                     >
-                      <MenuItem value=""><em>Select your role</em></MenuItem>
-                      <MenuItem value="Corporate">Corporate</MenuItem>
-                      <MenuItem value="Dealer">Dealer</MenuItem>
-                      <MenuItem value="Marketing Agency">Marketing Agency</MenuItem>
-                      <MenuItem value="Admin">Admin (Platform-level)</MenuItem>
-                    </Select>
-                    {errors.role && <FormHelperText>{errors.role}</FormHelperText>}
-                  </FormControl>
-                </Grid>
-              </Grid>
+                      {showPassword ? <VisibilityOff className="text-gray-500" fontSize="small" /> : <Visibility className="text-gray-500" fontSize="small" />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+                </div>
+              </div>
               
-              {showCompanyForm && (
-                <>
-                  <Typography variant="subtitle2" sx={{ mb: 1, mt: 1.5, fontWeight: 'bold', fontSize: '0.8rem', color: '#374151' }}>
-                    Company Details
-                  </Typography>
-                  
-                  <Grid container spacing={1} sx={{ mb: 1 }}>
-                    <Grid item xs={12} sm={6}>
-                      <FormControl fullWidth error={!!errors.companyName}>
-                        <FormLabel>Company Name *</FormLabel>
-                        <TextField
-                          name="companyName"
-                          value={formData.companyName}
-                          onChange={handleChange}
-                          size="small"
-                        />
-                        {errors.companyName && <FormHelperText>{errors.companyName}</FormHelperText>}
-                      </FormControl>
-                    </Grid>
-                    
-                    <Grid item xs={12} sm={6}>
-                      <FormControl fullWidth error={!!errors.registrationNumber}>
-                        <FormLabel>Registration Number *</FormLabel>
-                        <TextField
-                          name="registrationNumber"
-                          value={formData.registrationNumber}
-                          onChange={handleChange}
-                          size="small"
-                        />
-                        {errors.registrationNumber && <FormHelperText>{errors.registrationNumber}</FormHelperText>}
-                      </FormControl>
-                    </Grid>
-                    
-                    <Grid item xs={12} sm={6}>
-                      <FormControl fullWidth error={!!errors.taxId}>
-                        <FormLabel>Tax ID / VAT / GST *</FormLabel>
-                        <TextField
-                          name="taxId"
-                          value={formData.taxId}
-                          onChange={handleChange}
-                          size="small"
-                        />
-                        {errors.taxId && <FormHelperText>{errors.taxId}</FormHelperText>}
-                      </FormControl>
-                    </Grid>
-                    
-                    <Grid item xs={12} sm={6}>
-                      <FormControl fullWidth error={!!errors.industryType}>
-                        <FormLabel>Industry Type *</FormLabel>
-                        <Select
-                          name="industryType"
-                          value={formData.industryType}
-                          onChange={handleChange}
-                          displayEmpty
-                          size="small"
-                        >
-                          <MenuItem value=""><em>Select industry</em></MenuItem>
-                          {industryTypes.map(type => (
-                            <MenuItem key={type} value={type}>{type}</MenuItem>
-                          ))}
-                        </Select>
-                        {errors.industryType && <FormHelperText>{errors.industryType}</FormHelperText>}
-                      </FormControl>
-                    </Grid>
-                    
-                    <Grid item xs={12}>
-                      <FormLabel>Address *</FormLabel>
-                    </Grid>
-                    
-                    <Grid item xs={12}>
-                      <FormControl fullWidth error={!!errors.street}>
-                        <TextField
-                          name="street"
-                          placeholder="Street address"
-                          value={formData.street}
-                          onChange={handleChange}
-                          size="large"
-                        />
-                        {errors.street && <FormHelperText>{errors.street}</FormHelperText>}
-                      </FormControl>
-                    </Grid>
-                    
-                    <Grid item xs={15} sm={6}>
-                      <FormControl fullWidth error={!!errors.city}>
-                        <TextField
-                          name="city"
-                          placeholder="City"
-                          value={formData.city}
-                          onChange={handleChange}
-                          size="small"
-                        />
-                        {errors.city && <FormHelperText>{errors.city}</FormHelperText>}
-                      </FormControl>
-                    </Grid>
-                    
-                    <Grid item xs={12} sm={6}>
-                      <FormControl fullWidth error={!!errors.country}>
-                        <Select
-                          name="country"
-                          value={formData.country}
-                          onChange={handleChange}
-                          displayEmpty
-                          size="small"
-                        >
-                          <MenuItem value=""><em>Select country</em></MenuItem>
-                          {countries.map(country => (
-                            <MenuItem key={country} value={country}>{country}</MenuItem>
-                          ))}
-                        </Select>
-                        {errors.country && <FormHelperText>{errors.country}</FormHelperText>}
-                      </FormControl>
-                    </Grid>
-                    
-                    <Grid item xs={12}>
-                      <FormControl fullWidth>
-                        <FormLabel>Website (Optional)</FormLabel>
-                        <TextField
-                          name="website"
-                          placeholder="https://yourcompany.com"
-                          value={formData.website}
-                          onChange={handleChange}
-                          size="small"
-                        />
-                      </FormControl>
-                    </Grid>
-                    
-                    <Grid item xs={12} sm={6}>
-                      <FormControl fullWidth>
-                        <FormLabel>Upload Logo (Optional)</FormLabel>
-                        <Button
-                          variant="outlined"
-                          component="label"
-                          startIcon={<CloudUpload sx={{ fontSize: '0.9rem' }} />}
-                          size="small"
-                          fullWidth
-                          sx={{ justifyContent: 'flex-start' }}
-                        >
-                          {logoFile ? logoFile.name : 'Select Logo'}
-                          <input
-                            type="file"
-                            hidden
-                            accept="image/*"
-                            onChange={handleLogoUpload}
-                          />
-                        </Button>
-                      </FormControl>
-                    </Grid>
-                    
-                    <Grid item xs={12} sm={6}>
-                      <FormControl fullWidth>
-                        <FormLabel>Upload KYC Documents (Optional)</FormLabel>
-                        <Button
-                          variant="outlined"
-                          component="label"
-                          startIcon={<CloudUpload sx={{ fontSize: '0.9rem' }} />}
-                          size="small"
-                          fullWidth
-                          sx={{ justifyContent: 'flex-start' }}
-                        >
-                          Add Files
-                          <input
-                            type="file"
-                            hidden
-                            multiple
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            onChange={handleKycUpload}
-                          />
-                        </Button>
-                        {kycFiles.length > 0 && (
-                          <Box sx={{ mt: 0.5 }}>
-                            {kycFiles.map((file, index) => (
-                              <Chip
-                                key={index}
-                                label={file.name}
-                                onDelete={() => removeKycFile(index)}
-                                size="small"
-                                sx={{ m: 0.25, fontSize: '0.65rem', height: '24px' }}
-                                deleteIcon={<Close sx={{ fontSize: '0.9rem' }} />}
-                              />
-                            ))}
-                          </Box>
-                        )}
-                      </FormControl>
-                    </Grid>
-                  </Grid>
-                </>
-              )}
+              <h2 className="text-sm font-bold mt-5 mb-3 text-gray-700 border-b pb-2">Role Selection</h2>
               
-              <FormControlLabel
-                control={<Checkbox color="primary" size="small" />}
-                label="I agree to the Terms and Conditions"
-                sx={{ mb: 1, mt: 1, '& .MuiFormControlLabel-label': { fontSize: '0.75rem' } }}
-              />
+              <div className="mb-4">
+                <div className="w-full">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Select Role *</label>
+                  <select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    className={`w-full p-2.5 text-sm border rounded-md ${errors.role ? 'border-red-500' : 'border-gray-300'}`}
+                  >
+                    <option value="Corporate">Corporate</option>
+                    <option value="Dealer">Dealer</option>
+                    <option value="Marketing Agency">Marketing Agency</option>
+                    <option value="Admin">Admin (Platform-level)</option>
+                  </select>
+                  {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role}</p>}
+                </div>
+              </div>
               
-              <Button
+              <div className="flex items-center mb-4 mt-5">
+                <input
+                  type="checkbox"
+                  id="terms"
+                  checked={agreeTerms}
+                  onChange={(e) => setAgreeTerms(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="terms" className="ml-2 block text-xs text-gray-700">
+                  I agree to the Terms and Conditions
+                </label>
+              </div>
+              {errors.agreeTerms && <p className="text-red-500 text-xs mt-1 mb-2">{errors.agreeTerms}</p>}
+              
+              <button
                 type="submit"
-                fullWidth
-                variant="contained"
                 disabled={isSubmitting}
-                sx={{ mb: 1, py: 0.5, fontSize: '0.8rem' }}
+                className={`w-full py-3 px-4 rounded-md text-sm font-medium mb-4 ${
+                  isSubmitting 
+                    ? 'bg-blue-400 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
               >
                 {isSubmitting ? 'Creating Account...' : 'Create Account'}
-              </Button>
+              </button>
               
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="body2" component="span" sx={{ fontSize: '0.75rem' }}>
+              <div className="text-center">
+                <span className="text-xs text-gray-600">
                   Already have an account?{' '}
-                </Typography>
-                <Link href="/SignInPage" variant="body2" fontWeight="bold" sx={{ fontSize: '0.75rem' }}>
+                </span>
+                <a href="/SignInPage" className="text-xs font-bold text-blue-600 hover:underline">
                   Sign in
-                </Link>
-              </Box>
-            </Box>
-          </Paper>
-          
-          <Typography variant="body2" color="textSecondary" align="center" sx={{ mt: 1, fontSize: '0.65rem' }}>
-            © {new Date().getFullYear()} DATTREO. All rights reserved.
-          </Typography>
-        </Container>
-      </Box>
-    </ThemeProvider>
+                </a>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* Right Column - Company Details (Appears when needed) */}
+        {showCompanyForm && (
+          <div className="w-1/2 bg-white p-6 rounded-lg shadow-md transition-all duration-500 animate-fadeIn">
+            <div className="flex items-center mb-4">
+              <Business className="text-blue-600 mr-2" />
+              <h2 className="text-lg font-bold text-gray-800">Company Details</h2>
+            </div>
+            
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+              <div className="grid grid-cols-1 gap-3">
+                <div className="w-full">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Company Name *</label>
+                  <input
+                    name="company.name"
+                    value={companyData.name}
+                    onChange={handleChange}
+                    className={`w-full p-2.5 text-sm border rounded-md ${errors.companyName ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                  {errors.companyName && <p className="text-red-500 text-xs mt-1">{errors.companyName}</p>}
+                </div>
+                
+                <div className="w-full">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Registration Number *</label>
+                  <input
+                    name="company.registrationNumber"
+                    value={companyData.registrationNumber}
+                    onChange={handleChange}
+                    className={`w-full p-2.5 text-sm border rounded-md ${errors.registrationNumber ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                  {errors.registrationNumber && <p className="text-red-500 text-xs mt-1">{errors.registrationNumber}</p>}
+                </div>
+                
+                <div className="w-full">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Tax ID / VAT / GST *</label>
+                  <input
+                    name="company.taxId"
+                    value={companyData.taxId}
+                    onChange={handleChange}
+                    className={`w-full p-2.5 text-sm border rounded-md ${errors.taxId ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                  {errors.taxId && <p className="text-red-500 text-xs mt-1">{errors.taxId}</p>}
+                </div>
+                
+                <div className="w-full">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Industry Type *</label>
+                  <select
+                    name="company.industryType"
+                    value={companyData.industryType}
+                    onChange={handleChange}
+                    className={`w-full p-2.5 text-sm border rounded-md ${errors.industryType ? 'border-red-500' : 'border-gray-300'}`}
+                  >
+                    <option value="">Select industry</option>
+                    {industryTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                  {errors.industryType && <p className="text-red-500 text-xs mt-1">{errors.industryType}</p>}
+                </div>
+                
+                <div className="w-full">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Street Address *</label>
+                  <input
+                    name="company.street"
+                    placeholder="Street address"
+                    value={companyData.address.street}
+                    onChange={handleChange}
+                    className={`w-full p-2.5 text-sm border rounded-md ${errors.street ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                  {errors.street && <p className="text-red-500 text-xs mt-1">{errors.street}</p>}
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="w-full">
+                    <label className="block text-xs font-bold text-gray-700 mb-1">City *</label>
+                    <input
+                      name="company.city"
+                      placeholder="City"
+                      value={companyData.address.city}
+                      onChange={handleChange}
+                      className={`w-full p-2.5 text-sm border rounded-md ${errors.city ? 'border-red-500' : 'border-gray-300'}`}
+                    />
+                    {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
+                  </div>
+                  
+                  <div className="w-full">
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Country *</label>
+                    <select
+                      name="company.country"
+                      value={companyData.address.country}
+                      onChange={handleChange}
+                      className={`w-full p-2.5 text-sm border rounded-md ${errors.country ? 'border-red-500' : 'border-gray-300'}`}
+                    >
+                      <option value="">Select country</option>
+                      {countries.map(country => (
+                        <option key={country} value={country}>{country}</option>
+                      ))}
+                    </select>
+                    {errors.country && <p className="text-red-500 text-xs mt-1">{errors.country}</p>}
+                  </div>
+                </div>
+                
+                <div className="w-full">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Website (Optional)</label>
+                  <input
+                    name="company.website"
+                    placeholder="https://yourcompany.com"
+                    value={companyData.website}
+                    onChange={handleChange}
+                    className="w-full p-2.5 text-sm border border-gray-300 rounded-md"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
