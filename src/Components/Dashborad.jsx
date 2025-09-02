@@ -194,6 +194,7 @@ export default function Dashboard() {
                 className="flex-1 bg-transparent text-sm px-2 outline-none"
               />
             </div>
+            
           </div>
 
           <div className="flex items-center gap-3">
