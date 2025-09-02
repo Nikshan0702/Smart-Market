@@ -1,9 +1,9 @@
 "use client";
-
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import { Visibility, VisibilityOff, Google, Facebook } from '@mui/icons-material';
+import { signIn } from 'next-auth/react';
 
 const SignInPage = () => {
   const router = useRouter();
@@ -15,6 +15,7 @@ const SignInPage = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -92,7 +93,7 @@ const SignInPage = () => {
       }
   
       toast.success('Logged in successfully!');
-      router.push('/dashboard'); // Redirect to dashboard or home page
+      router.push('/Dashboard'); // Redirect to dashboard or home page
   
     } catch (error) {
       console.error("Login error:", error);
@@ -104,6 +105,28 @@ const SignInPage = () => {
 
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsGoogleLoading(true);
+      const result = await signIn("google", {
+        callbackUrl: "/Dashboard",
+        redirect: false,
+      });
+
+      if (result?.error) {
+        toast.error("Google sign-in failed. Please try again.");
+        console.error("Google sign-in error:", result.error);
+      } else if (result?.url) {
+        window.location.href = result.url;
+      }
+    } catch (error) {
+      console.error("Google sign-in error:", error);
+      toast.error("Google sign-in failed. Please try again.");
+    } finally {
+      setIsGoogleLoading(false);
+    }
   };
 
   return (
@@ -194,10 +217,14 @@ const SignInPage = () => {
             <div className="flex flex-col gap-2 mb-3">
               <button
                 type="button"
-                className="w-full py-1.5 px-4 border border-gray-300 rounded text-sm flex items-center justify-center"
+                onClick={handleGoogleSignIn}
+                disabled={isGoogleLoading}
+                className={`w-full py-1.5 px-4 border border-gray-300 rounded text-sm flex items-center justify-center ${
+                  isGoogleLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                }`}
               >
                 <Google className="text-gray-500 mr-2" fontSize="small" />
-                Sign in with Google
+                {isGoogleLoading ? 'Signing in...' : 'Sign in with Google'}
               </button>
             </div>
             
@@ -205,7 +232,7 @@ const SignInPage = () => {
               <span className="text-sm text-gray-600">
                 Don't have an account?{' '}
               </span>
-              <a href="/SignInPage" className="text-sm font-bold text-blue-600 hover:underline">
+              <a href="/SignUpPage" className="text-sm font-bold text-blue-600 hover:underline">
                 Sign up
               </a>
             </div>

@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import Blogs from "@/DigitalMarketing/Blogs";
 import {
@@ -18,6 +17,7 @@ import {
   CreditCardIcon,
   ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
+import ProfileContent from "./ProfileContent";
 
 const mainMenuItems = [
   { 
@@ -56,75 +56,6 @@ const teamMenuItems = [
 // Component for each navigation item
 const DashboardContent = () => (
   <div>
-    {/* Welcome Card */}
-    <div className="bg-gradient-to-r from-blue-50 to-white border border-blue-100 rounded-lg p-5 mb-6">
-      <h2 className="text-lg font-semibold text-gray-800 mb-1">
-        Welcome back, Nikshan 👋
-      </h2>
-      <p className="text-sm text-gray-600">Here's your dashboard overview</p>
-    </div>
-
-    {/* Stats */}
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      {[
-        { value: "12", label: "Active Projects", color: "#1976d2", icon: "📋" },
-        { value: "8", label: "Team Members", color: "#dc004e", icon: "👥" },
-        { value: "24", label: "Completed Tasks", color: "#2e7d32", icon: "✅" },
-        { value: "3", label: "Upcoming Events", color: "#ed6c02", icon: "📅" },
-      ].map((stat, i) => (
-        <div
-          key={i}
-          className="bg-white p-4 rounded-lg border shadow-sm flex items-center"
-        >
-          <div
-            className="h-11 w-11 flex items-center justify-center rounded-md mr-3 text-lg"
-            style={{ backgroundColor: `${stat.color}15` }}
-          >
-            {stat.icon}
-          </div>
-          <div>
-            <p
-              className="text-xl font-semibold"
-              style={{ color: stat.color }}
-            >
-              {stat.value}
-            </p>
-            <p className="text-xs text-gray-500">{stat.label}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Recent Activity */}
-      <div className="lg:col-span-2 bg-white rounded-lg p-5 border shadow-sm">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-semibold text-gray-800">Recent Activity</h3>
-          <button className="text-sm text-[#1976d2] hover:underline">
-            View all
-          </button>
-        </div>
-        <div className="bg-gray-50 p-5 rounded-md h-48 flex items-center justify-center text-gray-400 italic">
-          Your recent projects and activities will appear here
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white rounded-lg p-5 border shadow-sm">
-        <h3 className="font-semibold text-gray-800 mb-4">Quick Actions</h3>
-        <div className="flex flex-col gap-2">
-          <button className="w-full py-2 text-sm border rounded-md hover:bg-gray-50">
-            Create New Project
-          </button>
-          <button className="w-full py-2 text-sm border rounded-md hover:bg-gray-50">
-            Invite Team Members
-          </button>
-          <button className="w-full py-2 text-sm border rounded-md hover:bg-gray-50">
-            Generate Reports
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 );
 
@@ -152,15 +83,9 @@ const TendersContent = () => (
   </div>
 );
 
-const ProfileContent = () => (
+const ProfileWrapper = () => (
   <div>
-    <div className="bg-white rounded-lg p-6 border shadow-sm mb-6">
-      <h2 className="text-xl font-semibold text-gray-800 mb-4">My Profile</h2>
-      <div className="bg-gray-50 p-8 rounded-md text-center">
-        <UserIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500 italic">Profile settings will appear here</p>
-      </div>
-    </div>
+    <ProfileContent />
   </div>
 );
 
@@ -185,13 +110,13 @@ export default function Dashboard() {
     
     switch (selectedComponent) {
       case "Dashboard":
-        return <DashboardContent />;
+        return <ProfileWrapper />;
       case "Invoices":
         return <InvoicesContent />;
       case "Tenders":
         return <TendersContent />;
-      case "Profile":
-        return <ProfileContent />;
+        case "Profile":
+        return <ProfileWrapper />;        
       case "Blogs":
         return <Blogs />;
       default:
@@ -232,26 +157,6 @@ export default function Dashboard() {
             ))}
           </ul>
 
-          <div className="my-6 border-t border-gray-200"></div>
-
-          <p className="px-2 mb-2 text-xs font-semibold text-gray-500">
-            YOUR TEAMS
-          </p>
-          <div className="flex flex-wrap gap-2 px-2">
-            {teamMenuItems.map((team) => (
-              <span
-                key={team.text}
-                className="px-2 py-1 rounded-full text-xs font-medium border"
-                style={{
-                  color: team.color,
-                  backgroundColor: `${team.color}15`,
-                  borderColor: `${team.color}30`,
-                }}
-              >
-                {team.text}
-              </span>
-            ))}
-          </div>
 
           <div className="my-6 border-t border-gray-200"></div>
 

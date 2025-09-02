@@ -119,7 +119,7 @@
 
 import { NextResponse } from "next/server";
 import connectMongoDB from "@/libs/mongodb";
-import User from '../../../Models/user';
+import User from "@/Models/user";
 
 export async function PUT(request, { params }) {
   try {

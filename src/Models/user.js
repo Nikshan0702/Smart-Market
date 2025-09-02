@@ -1,6 +1,5 @@
 import mongoose, { Schema } from "mongoose";
 
-// User Schema for individual users with embedded company details
 const userSchema = new Schema(
   {
     firstName: {
@@ -36,6 +35,19 @@ const userSchema = new Schema(
       required: [true, "Role is required"],
       enum: ['Corporate', 'Dealer', 'Marketing Agency', 'Admin'],
       default: 'Corporate'
+    },
+     // ✅ For OAuth
+     provider: {
+      type: String, // e.g. "google", "credentials"
+      default: "credentials"
+    },
+    providerId: {
+      type: String, // e.g. Google user ID
+      sparse: true // allows null for non-Google users
+    },
+    profileImage: {
+      type: String, // store Google profile picture or uploaded avatar
+      trim: true
     },
     
     // Embedded Company Details (for users with company roles)

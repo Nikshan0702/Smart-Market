@@ -199,3 +199,53 @@ export async function POST(request) {
     );
   }
 }
+
+export default async function handler(req, res) {
+  const session = await getServerSession(req, res, authOptions);
+
+  if (!session) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  await connectMongoDB();
+
+  try {
+    if (req.method === 'GET') {
+      // Get current user's profile
+      const user = await User.findOne({ email: session.user.email })
+        .select('-password'); // Exclude password
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      return res.status(200).json(user);
+    }
+
+    if (req.method === 'PUT') {
+      // Update current user's profile
+      const { firstName, lastName, mobile } = req.body;
+
+      const user = await User.findOneAndUpdate(
+        { email: session.user.email },
+        { 
+          ...(firstName && { firstName }),
+          ...(lastName && { lastName }),
+          ...(mobile && { mobile }),
+        },
+        { new: true, runValidators: true }
+      ).select('-password');
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      return res.status(200).json(user);
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+  } catch (error) {
+    console.error('Profile API error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
