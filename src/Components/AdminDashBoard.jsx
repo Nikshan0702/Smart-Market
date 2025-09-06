@@ -8,7 +8,7 @@ const data = [
   { name: "Orders", value: 300 },
   { name: "Revenue", value: 300 }
 ];
-const COLORS = ["#0088F", "#00C49F", "#FFBB28"];
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28"];
 
 export default function DashboardPage() {
   return (
