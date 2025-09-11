@@ -133,7 +133,7 @@ const SignInPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center py-4 px-4">
       <div className="max-w-xs w-full">
         <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
-          <h1 className="text-xl font-bold mb-4">Sign in</h1>
+          <h1 className="text-2xl font-bold mb-4 text-[#288984]">Sign in</h1>
           
           <form onSubmit={handleSubmit} className="w-full">
             <div className="mb-3">
@@ -147,7 +147,7 @@ const SignInPage = () => {
                 placeholder="your@email.com"
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full p-2 text-sm border rounded ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full p-2 text-sm border rounded ${errors.email ? 'border-red-500' : 'border-[#98F4F0]'}`}
               />
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
             </div>
@@ -164,14 +164,14 @@ const SignInPage = () => {
                   placeholder="••••••"
                   value={formData.password}
                   onChange={handleChange}
-                  className={`w-full p-2 pr-8 text-sm border rounded ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`w-full p-2 pr-8 text-sm border rounded ${errors.password ? 'border-red-500' : 'border-[#98F4F0]'}`}
                 />
                 <button
                   type="button"
                   onClick={handleClickShowPassword}
                   className="absolute inset-y-0 right-0 pr-2 flex items-center"
                 >
-                  {showPassword ? <VisibilityOff className="text-gray-500" fontSize="small" /> : <Visibility className="text-gray-500" fontSize="small" />}
+                  {!showPassword ? <VisibilityOff className="text-[#288984]" fontSize="small" /> : <Visibility className="text-[#5BB5B1]" fontSize="small" />}
                 </button>
               </div>
               {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
@@ -183,7 +183,7 @@ const SignInPage = () => {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 accent-[#288984] focus:ring-[#5BB5B1] border-gray-300 rounded"
               />
               <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-700">
                 Remember me
@@ -195,23 +195,23 @@ const SignInPage = () => {
               disabled={isLoading}
               className={`w-full py-2 px-4 rounded text-sm font-medium mb-3 ${
                 isLoading 
-                  ? 'bg-blue-400 cursor-not-allowed' 
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  ? 'bg-[#2A9691] cursor-not-allowed' 
+                  : 'bg-[#288984] hover:bg-[#2A9691] text-white'
               }`}
             >
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
             
             <div className="text-center mb-3">
-              <a href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+              <a href="/forgot-password" className="text-sm text-[#5BB5B1] hover:underline">
                 Forgot your password?
               </a>
             </div>
             
             <div className="flex items-center my-3">
-              <div className="flex-grow border-t border-gray-300"></div>
+              <div className="flex-grow border-t border-[#98F4F0]"></div>
               <span className="mx-2 text-xs text-gray-500">or</span>
-              <div className="flex-grow border-t border-gray-300"></div>
+              <div className="flex-grow border-t border-[#98F4F0]"></div>
             </div>
             
             <div className="flex flex-col gap-2 mb-3">
@@ -219,11 +219,11 @@ const SignInPage = () => {
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={isGoogleLoading}
-                className={`w-full py-1.5 px-4 border border-gray-300 rounded text-sm flex items-center justify-center ${
-                  isGoogleLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                className={`w-full py-1.5 px-4 border border-[#98F4F0] rounded text-sm flex items-center justify-center ${
+                  isGoogleLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#D4FFFD]'
                 }`}
               >
-                <Google className="text-gray-500 mr-2" fontSize="small" />
+                <Google className="text-black mr-2" fontSize="small" />
                 {isGoogleLoading ? 'Signing in...' : 'Sign in with Google'}
               </button>
             </div>
@@ -232,7 +232,7 @@ const SignInPage = () => {
               <span className="text-sm text-gray-600">
                 Don't have an account?{' '}
               </span>
-              <a href="/SignUpPage" className="text-sm font-bold text-blue-600 hover:underline">
+              <a href="/SignUpPage" className="text-sm font-bold text-[#288984] hover:underline">
                 Sign up
               </a>
             </div>
