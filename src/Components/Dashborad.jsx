@@ -18,6 +18,7 @@ import {
   ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import ProfileContent from "./ProfileContent";
+import TenderContent from "./TenderContent";
 
 const mainMenuItems = [
   { 
@@ -73,13 +74,14 @@ const InvoicesContent = () => (
 
 const TendersContent = () => (
   <div>
-    <div className="bg-white rounded-lg p-6 border shadow-sm mb-6">
+    {/* <div className="bg-white rounded-lg p-6 border shadow-sm mb-6">
       <h2 className="text-xl font-semibold text-gray-800 mb-4">Tenders</h2>
       <div className="bg-gray-50 p-8 rounded-md text-center">
         <ClipboardDocumentListIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
         <p className="text-gray-500 italic">Tender management will appear here</p>
       </div>
-    </div>
+    </div> */}
+    <TenderContent/>
   </div>
 );
 

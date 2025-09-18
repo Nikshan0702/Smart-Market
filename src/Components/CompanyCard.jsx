@@ -53,9 +53,9 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
       <div className="p-6">
         <div className="flex items-center mb-4">
           {company.companyDetails?.logo && (
-            <img
-              src={company.companyDetails.logo}
-              alt={company.companyDetails.name}
+            <img 
+              src={company.companyDetails.logo} 
+              alt={company.companyDetails.name} 
               className="w-16 h-16 rounded-full object-cover mr-4"
             />
           )}
@@ -66,11 +66,11 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
             <p className="text-gray-600">{company.companyDetails?.industryType}</p>
           </div>
         </div>
-
+        
         <p className="text-gray-700 mb-4 line-clamp-3">
           {company.companyDetails?.description || "No description available"}
         </p>
-
+        
         <div className="flex justify-between items-center mb-4">
           <span className="text-sm text-gray-500">
             {company.companyDetails?.address
@@ -78,9 +78,9 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
               : "Location not specified"}
           </span>
           {company.companyDetails?.website && (
-            <a
-              href={company.companyDetails.website}
-              target="_blank"
+            <a 
+              href={company.companyDetails.website} 
+              target="_blank" 
               rel="noopener noreferrer"
               className="text-blue-500 hover:text-blue-700 text-sm"
             >
@@ -88,8 +88,9 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
             </a>
           )}
         </div>
-
-        {session?.user?.role === "Dealer" && (
+        
+        {/* Partnership Request Button */}
+        {session?.user?.role  && (
           <button
             onClick={requestPartnership}
             disabled={loading || partnershipStatus}

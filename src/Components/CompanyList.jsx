@@ -3,8 +3,8 @@
 
 import { useState, useEffect } from "react";
 import CompanyCard from "./CompanyCard";
-import SearchBar from "./SearchBar";
-import Pagination from "./Pagination";
+// import SearchBar from "./SearchBar";
+// import Pagination from "./Pagination";
 
 const CompanyList = () => {
   const [companies, setCompanies] = useState([]);
@@ -57,7 +57,7 @@ const CompanyList = () => {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Registered Companies</h1>
 
-      <SearchBar onSearch={handleSearch} placeholder="Search companies..." />
+      {/* <SearchBar onSearch={handleSearch} placeholder="Search companies..." /> */}
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
@@ -83,11 +83,11 @@ const CompanyList = () => {
             ))}
           </div>
 
-          <Pagination
+          {/* <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
-          />
+          /> */}
         </>
       )}
     </div>
