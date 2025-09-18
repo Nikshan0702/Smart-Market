@@ -26,9 +26,10 @@ export const authOptions = {
         if (!isValid) throw new Error("Invalid password");
 
         return {
-          id: user._id,
+          id: user._id.toString(),
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
+          role: user.role,
         };
       },
     }),
@@ -37,12 +38,14 @@ export const authOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.role = user.role;
       }
       return token;
     },
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id;
+        session.user.role = token.role;
       }
       return session;
     },
@@ -52,6 +55,18 @@ export const authOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      }
+    }
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

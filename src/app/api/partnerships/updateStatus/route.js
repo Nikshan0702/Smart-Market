@@ -6,15 +6,15 @@ import Partnership from "@/Models/Partnership";
 import User from "@/Models/user";
 
 export default async function handler(req, res) {
-  const session = await getServerSession(req, res, authOptions);
+  // const session = await getServerSession(req, res, authOptions);
 
-  if (!session) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
+  // if (!session) {
+  //   return res.status(401).json({ error: "Unauthorized" });
+  // }
 
-  if (req.method !== "PUT") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  // if (req.method !== "PUT") {
+  //   return res.status(405).json({ error: "Method not allowed" });
+  // }
 
   try {
     await connectMongoDB();

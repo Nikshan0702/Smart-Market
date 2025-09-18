@@ -62,41 +62,57 @@ const TendersContent = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  
+  try {
+    console.log("Submitting tender form:", formData);
     
+    const response = await fetch('/api/tenders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData),
+    });
+
+    const responseText = await response.text();
+    console.log("Raw API response:", responseText);
+    
+    let responseData;
     try {
-      const response = await fetch('/api/tenders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create tender');
-      }
-
-      const newTender = await response.json();
-      setTenders(prev => [newTender, ...prev]);
-      setShowCreateForm(false);
-      setFormData({
-        title: '',
-        description: '',
-        category: '',
-        budget: '',
-        deadline: '',
-        location: '',
-        requirements: '',
-        contactEmail: '',
-        contactPhone: ''
-      });
-      toast.success('Tender published successfully!');
-    } catch (error) {
-      console.error('Error creating tender:', error);
-      toast.error('Failed to publish tender');
+      responseData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Failed to parse JSON response:", parseError);
+      throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}...`);
     }
-  };
+    
+    if (!response.ok) {
+      console.error("API error response:", responseData);
+      throw new Error(responseData.error || responseData.details || `Failed to create tender: ${response.status}`);
+    }
+
+    const newTender = responseData;
+    console.log("Tender created successfully:", newTender);
+    
+    setTenders(prev => [newTender, ...prev]);
+    setShowCreateForm(false);
+    setFormData({
+      title: '',
+      description: '',
+      category: '',
+      budget: '',
+      deadline: '',
+      location: '',
+      requirements: '',
+      contactEmail: '',
+      contactPhone: ''
+    });
+    toast.success('Tender published successfully!');
+  } catch (error) {
+    console.error('Error creating tender:', error);
+    toast.error(error.message || 'Failed to publish tender');
+  }
+};
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {

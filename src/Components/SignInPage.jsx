@@ -50,6 +50,22 @@ const SignInPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Function to determine redirect path based on user role
+  const getRedirectPath = (userRole) => {
+    switch (userRole) {
+      case 'Admin':
+        return '/AdminDashboard';
+      case 'Company':
+        return '/Dashboard';
+      case 'Dealer':
+        return '/CompanyList';
+      case 'MarketingAgency':
+        return '/Dashboard';
+      default:
+        return '/Dashboard'; // Default fallback
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -81,19 +97,27 @@ const SignInPage = () => {
       if (!response.ok) {
         throw new Error(data.message || data.error || 'Login failed');
       }
-  
+
       if (!data.token) {
         throw new Error('Authentication token missing');
       }
-  
+
       // Store token
       localStorage.setItem('authToken', data.token);
       if (rememberMe) {
         localStorage.setItem('rememberMe', 'true');
       }
-  
+
+      // Store user data including role
+      if (data.user) {
+        localStorage.setItem('userData', JSON.stringify(data.user));
+      }
+
       toast.success('Logged in successfully!');
-      router.push('/Dashboard'); // Redirect to dashboard or home page
+      
+      // Redirect based on user role
+      const redirectPath = data.user?.role ? getRedirectPath(data.user.role) : '/Dashboard';
+      router.push(redirectPath);
   
     } catch (error) {
       console.error("Login error:", error);
@@ -111,7 +135,7 @@ const SignInPage = () => {
     try {
       setIsGoogleLoading(true);
       const result = await signIn("google", {
-        callbackUrl: "/Dashboard",
+        callbackUrl: "/Dashboard", // This will be overridden by our custom handling
         redirect: false,
       });
 
@@ -119,6 +143,7 @@ const SignInPage = () => {
         toast.error("Google sign-in failed. Please try again.");
         console.error("Google sign-in error:", result.error);
       } else if (result?.url) {
+        // For OAuth, we'll let the server handle the redirection based on role
         window.location.href = result.url;
       }
     } catch (error) {

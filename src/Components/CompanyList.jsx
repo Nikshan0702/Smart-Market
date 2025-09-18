@@ -2,11 +2,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import CompanyCard from "./CompanyCard";
-// import SearchBar from "./SearchBar";
-// import Pagination from "./Pagination";
 
 const CompanyList = () => {
+  const { data: session, status } = useSession();
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -14,8 +14,10 @@ const CompanyList = () => {
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
-    fetchCompanies();
-  }, [currentPage, searchTerm]);
+    if (status !== "loading") {
+      fetchCompanies();
+    }
+  }, [currentPage, searchTerm, status]);
 
   const fetchCompanies = async () => {
     try {
@@ -53,11 +55,19 @@ const CompanyList = () => {
     setCurrentPage(1);
   };
 
+  if (status === "loading") {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Registered Companies</h1>
-
-      {/* <SearchBar onSearch={handleSearch} placeholder="Search companies..." /> */}
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
@@ -78,16 +88,11 @@ const CompanyList = () => {
               <CompanyCard
                 key={company._id}
                 company={company}
+                currentUser={session?.user || {}} // Ensure we always pass an object
                 onPartnershipUpdate={fetchCompanies}
               />
             ))}
           </div>
-
-          {/* <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          /> */}
         </>
       )}
     </div>
