@@ -111,7 +111,7 @@
 
 // app/api/companies/route.js
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/libs/authOptions";
+import { authOptions } from "@/libs/auth";
 import connectMongoDB from "@/libs/mongodb";
 import User from "@/Models/user";
 import Partnership from "@/Models/Partnership";

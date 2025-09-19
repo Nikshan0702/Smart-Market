@@ -1,12 +1,13 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import { Visibility, VisibilityOff, Google, Facebook } from '@mui/icons-material';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 
 const SignInPage = () => {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -16,6 +17,30 @@ const SignInPage = () => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  // Check if user is already logged in via localStorage or session
+  useEffect(() => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userData');
+    localStorage.removeItem('rememberMe');
+    // Check localStorage first
+    const authToken = localStorage.getItem('authToken');
+    const userData = localStorage.getItem('userData');
+    
+    if (authToken && userData) {
+      // User is logged in via custom API
+      const user = JSON.parse(userData);
+      const redirectPath = getRedirectPath(user.role);
+      router.push(redirectPath);
+    } else if (status === 'authenticated' && session) {
+      // User is logged in via NextAuth
+      const userRole = session.user?.role;
+      if (userRole) {
+        const redirectPath = getRedirectPath(userRole);
+        router.push(redirectPath);
+      }
+    }
+  }, [session, status, router]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -55,8 +80,8 @@ const SignInPage = () => {
     switch (userRole) {
       case 'Admin':
         return '/AdminDashboard';
-      case 'Company':
-        return '/Dashboard';
+      case 'Corporate':
+        return '/CorporateDashboard';
       case 'Dealer':
         return '/CompanyList';
       case 'MarketingAgency':
@@ -153,6 +178,18 @@ const SignInPage = () => {
       setIsGoogleLoading(false);
     }
   };
+
+  // Show loading while checking authentication status
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#288984] mx-auto"></div>
+          <p className="mt-4 text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center py-4 px-4">

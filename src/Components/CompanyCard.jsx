@@ -1,34 +1,82 @@
 // components/CompanyCard.js
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-const CompanyCard = ({ company, currentUser, onPartnershipUpdate }) => {
+const CompanyCard = ({ company, onPartnershipUpdate }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const { data: session, status } = useSession();
   const router = useRouter();
 
+  // Get user data from both localStorage and session
+  useEffect(() => {
+    // Check localStorage first
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        setCurrentUser(parsedUser);
+        console.log("User data from localStorage:", parsedUser);
+      } catch (error) {
+        console.error("Error parsing user data from localStorage:", error);
+      }
+    } 
+    // If no localStorage data but session exists, use session
+    else if (session?.user) {
+      setCurrentUser(session.user);
+      console.log("User data from session:", session.user);
+    }
+    
+    console.log("Session data:", session);
+  }, [session]);
+
+  // Add this useEffect to log when currentUser changes
+  useEffect(() => {
+    console.log("Current User state:", currentUser);
+  }, [currentUser]);
+
   // Determine if the current user can request partnership
   const canRequestPartnership = () => {
+    console.log("Checking partnership eligibility:", {
+      currentUser,
+      companyId: company._id,
+      companyRole: company.role,
+      hasPartnershipRequest: company.hasPartnershipRequest
+    });
+
     // If no user is logged in, can't request
-    if (!currentUser ) return false;
+    if (!currentUser || !currentUser.id) {
+      console.log("Cannot request: No current user or user ID");
+      return false;
+    }
     
     // If user is a corporate, can't request partnership with other companies
-    if (currentUser.role === "Corporate") return false;
+    if (currentUser.role === "Corporate") {
+      console.log("Cannot request: User is Corporate");
+      return false;
+    }
     
     // If user is trying to request partnership with their own company
-    if (company._id === currentUser.id) return false;
+    if (company._id === currentUser.id) {
+      console.log("Cannot request: Same company");
+      return false;
+    }
     
     // If already has a partnership request with this company
-    if (company.hasPartnershipRequest) return false;
+    if (company.hasPartnershipRequest) {
+      console.log("Cannot request: Already has partnership request");
+      return false;
+    }
     
+    console.log("Can request partnership");
     return true;
   };
 
   const handlePartnershipRequest = async () => {
-    if (!session) {
+    if (!currentUser) {
       alert("Please log in to request partnership");
       router.push("/SignInPage");
       return;
@@ -36,12 +84,17 @@ const CompanyCard = ({ company, currentUser, onPartnershipUpdate }) => {
 
     setIsLoading(true);
     try {
+      // Get auth token from localStorage
+      const authToken = localStorage.getItem('authToken');
+      console.log("Auth token from localStorage:", authToken ? "Exists" : "Not found");
+      
       const response = await fetch("/api/partnerships/request", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(authToken && { "Authorization": `Bearer ${authToken}` }),
         },
-        credentials: "include", // This ensures cookies are sent
+        credentials: "include",
         body: JSON.stringify({
           companyId: company._id,
         }),
@@ -57,10 +110,22 @@ const CompanyCard = ({ company, currentUser, onPartnershipUpdate }) => {
       }
 
       if (!response.ok) {
-        // Handle unauthorized error specifically
+        // Handle specific error cases
         if (response.status === 401) {
           alert("Your session has expired. Please log in again.");
           router.push("/SignInPage");
+          return;
+        }
+        if (response.status === 403) {
+          alert("Only dealers can request partnerships.");
+          return;
+        }
+        if (response.status === 404) {
+          alert("Company not found.");
+          return;
+        }
+        if (response.status === 400) {
+          alert(responseData.error || "Partnership request already exists.");
           return;
         }
         throw new Error(responseData.error || `Failed to send partnership request: ${response.status}`);
@@ -78,7 +143,7 @@ const CompanyCard = ({ company, currentUser, onPartnershipUpdate }) => {
     }
   };
 
-  // Show loading state while checking session
+  // Show loading state while checking session and user data
   if (status === "loading") {
     return (
       <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
@@ -94,6 +159,8 @@ const CompanyCard = ({ company, currentUser, onPartnershipUpdate }) => {
       </div>
     );
   }
+
+  const canRequest = canRequestPartnership();
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
@@ -120,7 +187,7 @@ const CompanyCard = ({ company, currentUser, onPartnershipUpdate }) => {
         </p>
       </div>
 
-      {canRequestPartnership() && (
+      {canRequest && (
         <button
           onClick={handlePartnershipRequest}
           disabled={isLoading}
@@ -144,7 +211,7 @@ const CompanyCard = ({ company, currentUser, onPartnershipUpdate }) => {
         </div>
       )}
 
-      {!session && (
+      {!currentUser && (
         <div className="w-full bg-gray-100 text-gray-600 py-2 px-4 rounded-md text-center mt-2">
           Please log in to request partnership
         </div>

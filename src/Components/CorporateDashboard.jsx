@@ -14,16 +14,37 @@ const CorporateDashboard = () => {
 
   const fetchPartnershipRequests = async () => {
     try {
+      // Get auth token from localStorage for custom auth
+      const authToken = localStorage.getItem('authToken');
+
+      const headers = {
+        "Content-Type": "application/json",
+      };
+      
+      // Add authorization header if token exists
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+      
       const response = await fetch("/api/partnerships/companyrequests", {
+        headers,
         credentials: "include",
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          // Clear invalid token and redirect to login
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userData');
+          alert("Your session has expired. Please log in again.");
+          window.location.href = "/SignInPage";
+          return;
+        }
         throw new Error("Failed to fetch partnership requests");
       }
 
       const data = await response.json();
-      setPartnerships(data.partnerships);
+      setPartnerships(data.partnerships || []);
     } catch (error) {
       console.error("Error fetching partnership requests:", error);
       alert("Failed to load partnership requests");
@@ -34,13 +55,23 @@ const CorporateDashboard = () => {
 
   const handleStatusUpdate = async (partnershipId, status) => {
     try {
+      // Get auth token from localStorage for custom auth
+      const authToken = localStorage.getItem('authToken');
+      
+      const headers = {
+        "Content-Type": "application/json",
+      };
+      
+      // Add authorization header if token exists
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+      
       const response = await fetch("/api/partnerships/updatestatus", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ partnershipId, status }),
+        headers,
         credentials: "include",
+        body: JSON.stringify({ partnershipId, status }),
       });
 
       if (!response.ok) {
@@ -86,7 +117,7 @@ const CorporateDashboard = () => {
             <div>
               <p className="text-gray-600">Approved Dealers</p>
               <p className="text-2xl font-bold">
-                {partnerships.filter((p) => p.status === "approved").length}
+                {partnerships.filter((p) => p.status === "accepted").length}
               </p>
             </div>
           </div>

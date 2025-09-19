@@ -37,9 +37,33 @@ const TendersContent = () => {
   const fetchTenders = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/tenders');
       
+      // Get auth token from localStorage for custom auth
+      const authToken = localStorage.getItem('authToken');
+      
+      const headers = {
+        "Content-Type": "application/json",
+      };
+      
+      // Add authorization header if token exists
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+      
+      const response = await fetch('/api/tenders', {
+        headers,
+        credentials: "include",
+      });
+
       if (!response.ok) {
+        if (response.status === 401) {
+          // Clear invalid token and redirect to login
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userData');
+          alert("Your session has expired. Please log in again.");
+          window.location.href = "/SignInPage";
+          return;
+        }
         throw new Error('Failed to fetch tenders');
       }
 
@@ -62,57 +86,68 @@ const TendersContent = () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  try {
-    console.log("Submitting tender form:", formData);
+    e.preventDefault();
     
-    const response = await fetch('/api/tenders', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(formData),
-    });
-
-    const responseText = await response.text();
-    console.log("Raw API response:", responseText);
-    
-    let responseData;
     try {
-      responseData = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error("Failed to parse JSON response:", parseError);
-      throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}...`);
-    }
-    
-    if (!response.ok) {
-      console.error("API error response:", responseData);
-      throw new Error(responseData.error || responseData.details || `Failed to create tender: ${response.status}`);
-    }
+      console.log("Submitting tender form:", formData);
+      
+      // Get auth token from localStorage for custom auth
+      const authToken = localStorage.getItem('authToken');
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authorization header if token exists
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+      
+      const response = await fetch('/api/tenders', {
+        method: 'POST',
+        headers,
+        credentials: "include",
+        body: JSON.stringify(formData),
+      });
 
-    const newTender = responseData;
-    console.log("Tender created successfully:", newTender);
-    
-    setTenders(prev => [newTender, ...prev]);
-    setShowCreateForm(false);
-    setFormData({
-      title: '',
-      description: '',
-      category: '',
-      budget: '',
-      deadline: '',
-      location: '',
-      requirements: '',
-      contactEmail: '',
-      contactPhone: ''
-    });
-    toast.success('Tender published successfully!');
-  } catch (error) {
-    console.error('Error creating tender:', error);
-    toast.error(error.message || 'Failed to publish tender');
-  }
-};
+      const responseText = await response.text();
+      console.log("Raw API response:", responseText);
+      
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Failed to parse JSON response:", parseError);
+        throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}...`);
+      }
+      
+      if (!response.ok) {
+        console.error("API error response:", responseData);
+        throw new Error(responseData.error || responseData.details || `Failed to create tender: ${response.status}`);
+      }
+
+      const newTender = responseData;
+      console.log("Tender created successfully:", newTender);
+      
+      setTenders(prev => [newTender, ...prev]);
+      setShowCreateForm(false);
+      setFormData({
+        title: '',
+        description: '',
+        category: '',
+        budget: '',
+        deadline: '',
+        location: '',
+        requirements: '',
+        contactEmail: '',
+        contactPhone: ''
+      });
+      toast.success('Tender published successfully!');
+    } catch (error) {
+      console.error('Error creating tender:', error);
+      toast.error(error.message || 'Failed to publish tender');
+    }
+  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {

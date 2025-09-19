@@ -1,95 +1,77 @@
+// app/api/tenders/route.js
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/libs/authOptions";
+import { authOptions } from "@/libs/auth";
 import connectMongoDB from "@/libs/mongodb";
 import Tender from "@/Models/Tender";
-
-// export async function POST(request) {
-//   console.log("Tender API POST request received");
-  
-//   try {
-//     const session = await getServerSession(authOptions);
-//     console.log("Session:", session);
-
-//     if (!session) {
-//       console.log("Unauthorized: No session found");
-//       return new Response(
-//         JSON.stringify({ error: "Unauthorized" }),
-//         {
-//           status: 401,
-//           headers: { "Content-Type": "application/json" },
-//         }
-//       );
-//     }
-
-//     console.log("Connecting to MongoDB...");
-//     await connectMongoDB();
-//     console.log("MongoDB connected");
-    
-//     const body = await request.json();
-//     console.log("Received tender data:", body);
-
-//     // Validate required fields
-//     if (!body.title || !body.description || !body.category || !body.deadline || !body.contactEmail) {
-//       console.log("Missing required fields");
-//       return new Response(
-//         JSON.stringify({ error: "Missing required fields" }),
-//         {
-//           status: 400,
-//           headers: { "Content-Type": "application/json" },
-//         }
-//       );
-//     }
-
-//     console.log("Creating new tender...");
-//     const tender = new Tender({
-//       ...body,
-//       createdBy: session.user.id,
-//       status: "active",
-//     });
-
-//     console.log("Saving tender...");
-//     await tender.save();
-//     console.log("Tender saved successfully:", tender._id);
-
-//     return new Response(JSON.stringify(tender), {
-//       status: 201,
-//       headers: { "Content-Type": "application/json" },
-//     });
-//   } catch (error) {
-//     console.error("Error creating tender:", error);
-//     console.error("Error stack:", error.stack);
-    
-//     return new Response(
-//       JSON.stringify({ 
-//         error: "Internal server error",
-//         details: process.env.NODE_ENV === "development" ? error.message : "Something went wrong"
-//       }),
-//       {
-//         status: 500,
-//         headers: { "Content-Type": "application/json" },
-//       }
-//     );
-//   }
-// }
+import jwt from 'jsonwebtoken';
 
 export async function POST(request) {
   try {
+    await connectMongoDB();
+    
+    // Check authentication via both methods
+    let userId = null;
+    
+    // First try NextAuth session
     const session = await getServerSession(authOptions);
+    if (session?.user?.id) {
+      userId = session.user.id;
+      console.log("Authenticated via NextAuth session. User ID:", userId);
+    } 
+    // If no session, check for token in headers (custom auth)
+    else {
+      const authHeader = request.headers.get('Authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        
+        try {
+          // Verify token
+          if (!process.env.JWT_SECRET) {
+            throw new Error("JWT secret not configured");
+          }
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          console.log("Decoded token:", decoded);
+          
+          // Handle both userId and id fields in the token
+          userId = decoded.userId || decoded.id;
+          
+          if (!userId) {
+            console.error("Token does not contain user ID");
+            return new Response(
+              JSON.stringify({ error: "Invalid token format" }),
+              {
+                status: 401,
+                headers: { "Content-Type": "application/json" },
+              }
+            );
+          }
+          
+          console.log("Authenticated via JWT token. User ID:", userId);
+        } catch (tokenError) {
+          console.error("Token verification error:", tokenError);
+          return new Response(
+            JSON.stringify({ error: "Invalid or expired token" }),
+            {
+              status: 401,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+      }
+    }
 
-    if (!session || !session.user || !session.user.id) {
+    if (!userId) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({ error: "Unauthorized. Please log in." }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    await connectMongoDB();
-    
     const body = await request.json();
 
     const tender = new Tender({
       ...body,
-      createdBy: session.user.id, // This should now work
+      createdBy: userId,
       status: "active",
     });
 
