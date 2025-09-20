@@ -8,10 +8,11 @@ import { useRouter } from "next/navigation";
 const CompanyCard = ({ company, onPartnershipUpdate }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [partnershipStatus, setPartnershipStatus] = useState(null);
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  // Get user data from both localStorage and session
+  // Get user data and check partnership status
   useEffect(() => {
     // Check localStorage first
     const userData = localStorage.getItem('userData');
@@ -19,7 +20,6 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
       try {
         const parsedUser = JSON.parse(userData);
         setCurrentUser(parsedUser);
-        console.log("User data from localStorage:", parsedUser);
       } catch (error) {
         console.error("Error parsing user data from localStorage:", error);
       }
@@ -27,51 +27,41 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
     // If no localStorage data but session exists, use session
     else if (session?.user) {
       setCurrentUser(session.user);
-      console.log("User data from session:", session.user);
     }
-    
-    console.log("Session data:", session);
-  }, [session]);
 
-  // Add this useEffect to log when currentUser changes
-  useEffect(() => {
-    console.log("Current User state:", currentUser);
-  }, [currentUser]);
+    // Check if this company already has a partnership with the current user
+    checkPartnershipStatus();
+  }, [session, company]);
+
+  // Check partnership status with this company
+  const checkPartnershipStatus = async () => {
+    if (!currentUser || !currentUser.id || currentUser.role !== "Dealer") return;
+
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch(`/api/partnerships/status?companyId=${company._id}`, {
+        headers: {
+          ...(authToken && { "Authorization": `Bearer ${authToken}` }),
+        },
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPartnershipStatus(data.status);
+      }
+    } catch (error) {
+      console.error("Error checking partnership status:", error);
+    }
+  };
 
   // Determine if the current user can request partnership
   const canRequestPartnership = () => {
-    console.log("Checking partnership eligibility:", {
-      currentUser,
-      companyId: company._id,
-      companyRole: company.role,
-      hasPartnershipRequest: company.hasPartnershipRequest
-    });
-
-    // If no user is logged in, can't request
-    if (!currentUser || !currentUser.id) {
-      console.log("Cannot request: No current user or user ID");
-      return false;
-    }
+    if (!currentUser || !currentUser.id) return false;
+    if (currentUser.role !== "Dealer") return false;
+    if (company._id === currentUser.id) return false;
+    if (partnershipStatus) return false; // Already has some partnership status
     
-    // If user is a corporate, can't request partnership with other companies
-    if (currentUser.role === "Corporate") {
-      console.log("Cannot request: User is Corporate");
-      return false;
-    }
-    
-    // If user is trying to request partnership with their own company
-    if (company._id === currentUser.id) {
-      console.log("Cannot request: Same company");
-      return false;
-    }
-    
-    // If already has a partnership request with this company
-    if (company.hasPartnershipRequest) {
-      console.log("Cannot request: Already has partnership request");
-      return false;
-    }
-    
-    console.log("Can request partnership");
     return true;
   };
 
@@ -84,9 +74,7 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
 
     setIsLoading(true);
     try {
-      // Get auth token from localStorage
       const authToken = localStorage.getItem('authToken');
-      console.log("Auth token from localStorage:", authToken ? "Exists" : "Not found");
       
       const response = await fetch("/api/partnerships/request", {
         method: "POST",
@@ -100,14 +88,7 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
         }),
       });
 
-      const responseText = await response.text();
-      let responseData;
-      
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (e) {
-        throw new Error("Invalid response from server");
-      }
+      const responseData = await response.json();
 
       if (!response.ok) {
         // Handle specific error cases
@@ -126,12 +107,14 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
         }
         if (response.status === 400) {
           alert(responseData.error || "Partnership request already exists.");
+          setPartnershipStatus("pending"); // Update local state
           return;
         }
         throw new Error(responseData.error || `Failed to send partnership request: ${response.status}`);
       }
 
       alert("Partnership request sent successfully!");
+      setPartnershipStatus("pending"); // Update local state
       if (onPartnershipUpdate) {
         onPartnershipUpdate();
       }
@@ -142,6 +125,40 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
       setIsLoading(false);
     }
   };
+
+  // Get status display information
+  const getStatusInfo = () => {
+    switch (partnershipStatus) {
+      case "pending":
+        return {
+          text: "Request Pending",
+          color: "bg-yellow-100 text-yellow-800 border-yellow-200",
+          icon: "⏳"
+        };
+      case "approved":
+        return {
+          text: "Partnership Approved",
+          color: "bg-green-100 text-green-800 border-green-200",
+          icon: "✅"
+        };
+      case "rejected":
+        return {
+          text: "Request Rejected",
+          color: "bg-red-100 text-red-800 border-red-200",
+          icon: "❌"
+        };
+      case "blocked":
+        return {
+          text: "Partnership Blocked",
+          color: "bg-gray-100 text-gray-800 border-gray-200",
+          icon: "🚫"
+        };
+      default:
+        return null;
+    }
+  };
+
+  const statusInfo = getStatusInfo();
 
   // Show loading state while checking session and user data
   if (status === "loading") {
@@ -163,7 +180,7 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
   const canRequest = canRequestPartnership();
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+    <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-800">
           {company.companyDetails?.name || "Unnamed Company"}
@@ -185,8 +202,23 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
         <p className="text-gray-600">
           <span className="font-medium">Email:</span> {company.email}
         </p>
+        {company.companyDetails?.address && (
+          <p className="text-gray-600">
+            <span className="font-medium">Location:</span>{" "}
+            {company.companyDetails.address.city}, {company.companyDetails.address.country}
+          </p>
+        )}
       </div>
 
+      {/* Partnership Status Display */}
+      {statusInfo && (
+        <div className={`w-full py-2 px-4 rounded-md text-center mb-3 border ${statusInfo.color} flex items-center justify-center gap-2`}>
+          <span>{statusInfo.icon}</span>
+          <span className="font-medium">{statusInfo.text}</span>
+        </div>
+      )}
+
+      {/* Action Button */}
       {canRequest && (
         <button
           onClick={handlePartnershipRequest}
@@ -195,24 +227,25 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
             isLoading ? "opacity-50 cursor-not-allowed" : ""
           }`}
         >
-          {isLoading ? "Sending..." : "Request Partnership"}
+          {isLoading ? (
+            <span className="flex items-center justify-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              Sending Request...
+            </span>
+          ) : (
+            "Request Partnership"
+          )}
         </button>
       )}
 
-      {company.hasPartnershipRequest && (
-        <div className="w-full bg-yellow-100 text-yellow-800 py-2 px-4 rounded-md text-center mt-2">
-          Partnership Request Sent
-        </div>
-      )}
-
       {currentUser?.role === "Corporate" && (
-        <div className="w-full bg-gray-100 text-gray-600 py-2 px-4 rounded-md text-center mt-2">
+        <div className="w-full bg-gray-100 text-gray-600 py-2 px-4 rounded-md text-center">
           Companies cannot request partnerships
         </div>
       )}
 
       {!currentUser && (
-        <div className="w-full bg-gray-100 text-gray-600 py-2 px-4 rounded-md text-center mt-2">
+        <div className="w-full bg-gray-100 text-gray-600 py-2 px-4 rounded-md text-center">
           Please log in to request partnership
         </div>
       )}
