@@ -1,47 +1,71 @@
-import mongoose from 'mongoose';
+// Models/Tender.js
+const mongoose = require('mongoose');
 
-const tenderSchema = new mongoose.Schema({
+const TenderSchema = new mongoose.Schema({
   title: {
     type: String,
     required: true,
-    trim: true
   },
   description: {
     type: String,
-    required: true
+    required: true,
   },
   category: {
     type: String,
     required: true,
-    enum: ['construction', 'it', 'supplies', 'services', 'other']
   },
   budget: {
     type: Number,
-    min: 0
+    default: 0,
   },
   deadline: {
     type: Date,
-    required: true
+    required: true,
   },
-  location: String,
-  requirements: String,
+  location: {
+    type: String,
+  },
+  requirements: {
+    type: String,
+  },
   contactEmail: {
     type: String,
-    required: true
+    required: true,
   },
-  contactPhone: String,
+  contactPhone: {
+    type: String,
+  },
+  brandName: {
+    type: String,
+    required: true,
+  },
+  dealers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
   status: {
     type: String,
-    enum: ['active', 'closed', 'draft'],
-    default: 'active'
+    enum: ['active', 'closed'],
+    default: 'active',
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
-  }
+    required: true,
+  },
 }, {
-  timestamps: true
+  timestamps: true,
 });
 
-export default mongoose.models.Tender || mongoose.model('Tender', tenderSchema);
+// Add virtual for quotes
+TenderSchema.virtual('quotes', {
+  ref: 'TenderQuote',
+  localField: '_id',
+  foreignField: 'tender',
+});
+
+// Enable virtuals
+TenderSchema.set('toJSON', { virtuals: true });
+TenderSchema.set('toObject', { virtuals: true });
+
+module.exports = mongoose.models.Tender || mongoose.model('Tender', TenderSchema);

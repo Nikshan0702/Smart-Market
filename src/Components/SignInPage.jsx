@@ -81,9 +81,9 @@ const SignInPage = () => {
       case 'Admin':
         return '/AdminDashboard';
       case 'Corporate':
-        return '/CorporateDashboard';
+        return '/Dashboard';
       case 'Dealer':
-        return '/CompanyList';
+        return '/Dashboard';
       case 'MarketingAgency':
         return '/Dashboard';
       default:

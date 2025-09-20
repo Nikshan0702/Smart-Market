@@ -5,53 +5,57 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-const CompanyCard = ({ company, onPartnershipUpdate }) => {
+const CompanyCard = ({ company, currentUser, onPartnershipUpdate }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
   const [partnershipStatus, setPartnershipStatus] = useState(null);
+  const [checkingStatus, setCheckingStatus] = useState(true);
   const { data: session, status } = useSession();
   const router = useRouter();
 
   // Get user data and check partnership status
   useEffect(() => {
-    // Check localStorage first
-    const userData = localStorage.getItem('userData');
-    if (userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setCurrentUser(parsedUser);
-      } catch (error) {
-        console.error("Error parsing user data from localStorage:", error);
-      }
-    } 
-    // If no localStorage data but session exists, use session
-    else if (session?.user) {
-      setCurrentUser(session.user);
-    }
+    const checkPartnership = async () => {
+      setCheckingStatus(true);
+      await checkPartnershipStatus();
+      setCheckingStatus(false);
+    };
 
-    // Check if this company already has a partnership with the current user
-    checkPartnershipStatus();
-  }, [session, company]);
+    checkPartnership();
+  }, [company, session, currentUser]);
 
   // Check partnership status with this company
   const checkPartnershipStatus = async () => {
-    if (!currentUser || !currentUser.id || currentUser.role !== "Dealer") return;
+    // If no user is logged in, no need to check
+    if (!currentUser || !currentUser.id || currentUser.role !== "Dealer") {
+      setPartnershipStatus(null);
+      return;
+    }
 
     try {
       const authToken = localStorage.getItem('authToken');
+      const headers = {
+        "Content-Type": "application/json",
+      };
+      
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+
       const response = await fetch(`/api/partnerships/status?companyId=${company._id}`, {
-        headers: {
-          ...(authToken && { "Authorization": `Bearer ${authToken}` }),
-        },
+        headers,
         credentials: "include",
       });
 
       if (response.ok) {
         const data = await response.json();
         setPartnershipStatus(data.status);
+      } else if (response.status === 404) {
+        // No partnership exists
+        setPartnershipStatus(null);
       }
     } catch (error) {
       console.error("Error checking partnership status:", error);
+      setPartnershipStatus(null);
     }
   };
 
@@ -75,13 +79,17 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
     setIsLoading(true);
     try {
       const authToken = localStorage.getItem('authToken');
+      const headers = {
+        "Content-Type": "application/json",
+      };
+      
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
       
       const response = await fetch("/api/partnerships/request", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(authToken && { "Authorization": `Bearer ${authToken}` }),
-        },
+        headers,
         credentials: "include",
         body: JSON.stringify({
           companyId: company._id,
@@ -159,9 +167,10 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
   };
 
   const statusInfo = getStatusInfo();
+  const canRequest = canRequestPartnership();
 
-  // Show loading state while checking session and user data
-  if (status === "loading") {
+  // Show loading state while checking status
+  if (checkingStatus) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
         <div className="animate-pulse">
@@ -176,8 +185,6 @@ const CompanyCard = ({ company, onPartnershipUpdate }) => {
       </div>
     );
   }
-
-  const canRequest = canRequestPartnership();
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow">

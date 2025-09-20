@@ -1,59 +1,33 @@
+// app/api/tenders/partnertenders/route.js
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/libs/auth";
 import connectMongoDB from "@/libs/mongodb";
 import Tender from "@/Models/Tender";
+import TenderQuote from "@/Models/TenderQuote";
 import Partnership from "@/Models/Partnership";
-import User from "@/Models/user";
 import jwt from 'jsonwebtoken';
 
 export async function GET(request) {
   try {
     await connectMongoDB();
 
-    // Check authentication via both methods
+    // Authentication (same as your quote endpoint)
     let userId = null;
-    let userRole = null;
-    
-    // First try NextAuth session
     const session = await getServerSession(authOptions);
+    
     if (session?.user?.id) {
       userId = session.user.id;
-      userRole = session.user.role;
-    } 
-    // If no session, check for token in headers (custom auth)
-    else {
+    } else {
       const authHeader = request.headers.get('Authorization');
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
-        
         try {
-          // Verify token
-          if (!process.env.JWT_SECRET) {
-            throw new Error("JWT secret not configured");
-          }
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
-          
-          // Handle both userId and id fields in the token
           userId = decoded.userId || decoded.id;
-          userRole = decoded.role;
-          
-          if (!userId) {
-            return new Response(
-              JSON.stringify({ error: "Invalid token format" }),
-              {
-                status: 401,
-                headers: { "Content-Type": "application/json" },
-              }
-            );
-          }
         } catch (tokenError) {
-          console.error("Token verification error:", tokenError);
           return new Response(
             JSON.stringify({ error: "Invalid or expired token" }),
-            {
-              status: 401,
-              headers: { "Content-Type": "application/json" },
-            }
+            { status: 401, headers: { "Content-Type": "application/json" } }
           );
         }
       }
@@ -61,44 +35,49 @@ export async function GET(request) {
 
     if (!userId) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized. Please log in." }),
-        {
-          status: 401,
-          headers: { "Content-Type": "application/json" },
-        }
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // Check if user is a dealer
-    const user = await User.findById(userId);
-    if (!user || user.role !== "Dealer") {
-      return new Response(
-        JSON.stringify({ error: "Only dealers can view partner tenders" }),
-        {
-          status: 403,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Get accepted partnerships for this dealer
+    // Get all partnerships where the user is a dealer and status is approved
     const partnerships = await Partnership.find({
       dealer: userId,
       status: "approved"
-    });
+    }).populate('company', 'name');
 
-    const partnerCompanyIds = partnerships.map(p => p.company);
+    const companyIds = partnerships.map(p => p.company._id.toString());
 
-    // Get active tenders from partner companies
+    // Get tenders from these companies
     const tenders = await Tender.find({
-      createdBy: { $in: partnerCompanyIds },
+      createdBy: { $in: companyIds },
       status: "active"
-    })
-    .populate("createdBy", "companyDetails.name")
-    .sort({ createdAt: -1 });
+    }).populate('createdBy', 'name')
+      .sort({ createdAt: -1 });
+
+    // For each tender, check if user has submitted a quote
+    const tendersWithQuoteStatus = await Promise.all(
+      tenders.map(async (tender) => {
+        const quote = await TenderQuote.findOne({
+          tender: tender._id,
+          dealer: userId
+        });
+        
+        return {
+          ...tender.toObject(),
+          userQuote: quote ? {
+            _id: quote._id,
+            status: quote.status,
+            budget: quote.budget,
+            notes: quote.notes,
+            createdAt: quote.createdAt
+          } : null
+        };
+      })
+    );
 
     return new Response(
-      JSON.stringify({ tenders }),
+      JSON.stringify({ tenders: tendersWithQuoteStatus }),
       {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -108,10 +87,7 @@ export async function GET(request) {
     console.error("Error fetching partner tenders:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 }

@@ -117,7 +117,7 @@ const CorporateDashboard = () => {
             <div>
               <p className="text-gray-600">Approved Dealers</p>
               <p className="text-2xl font-bold">
-                {partnerships.filter((p) => p.status === "accepted").length}
+                {partnerships.filter((p) => p.status === "approved").length}
               </p>
             </div>
           </div>

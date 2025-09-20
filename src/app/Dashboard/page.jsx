@@ -3,6 +3,8 @@ import Dashboard from '@/Components/Dashborad'
 
 export default function page() {
   return (
-    <div><Dashboard/></div>
+    <div>
+      <Dashboard/>
+    </div>
   )
 }

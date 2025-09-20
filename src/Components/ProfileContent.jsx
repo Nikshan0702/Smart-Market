@@ -40,38 +40,55 @@ const ProfileContent = () => {
   }, [status, session, router]);
 
   const fetchUserProfile = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/user/Profile");
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Handle unauthorized access
-          router.push('/SignInPage');
-          return;
-        }
-        throw new Error("Failed to fetch user profile");
-      }
-  
-      const userProfile = await response.json();
-      setUserData(userProfile);
-      
-      // Initialize form data with user profile
-      setFormData({
-        firstName: userProfile.firstName || '',
-        lastName: userProfile.lastName || '',
-        email: userProfile.email || '',
-        mobile: userProfile.mobile || '',
-        role: userProfile.role || '',
-        companyName: userProfile.companyDetails?.name || ''
-      });
-    } catch (err) {
-      console.error("Error fetching profile:", err);
-      toast.error("Failed to load profile");
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    
+    // Get auth token from localStorage for custom auth
+    const authToken = localStorage.getItem('authToken');
+    
+    const headers = {
+      "Content-Type": "application/json",
+    };
+    
+    // Add authorization header if token exists
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
     }
-  };
+    
+    // Use correct lowercase path
+    const response = await fetch("/api/user/profile", {
+      headers,
+      credentials: "include",
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        // Handle unauthorized access
+        router.push('/SignInPage');
+        return;
+      }
+      throw new Error("Failed to fetch user profile");
+    }
+
+    const userProfile = await response.json();
+    setUserData(userProfile);
+    
+    // Initialize form data with user profile
+    setFormData({
+      firstName: userProfile.firstName || '',
+      lastName: userProfile.lastName || '',
+      email: userProfile.email || '',
+      mobile: userProfile.mobile || '',
+      role: userProfile.role || '',
+      companyName: userProfile.companyDetails?.name || ''
+    });
+  } catch (err) {
+    console.error("Error fetching profile:", err);
+    toast.error("Failed to load profile");
+  } finally {
+    setLoading(false);
+  }
+};
   
 
   const handleInputChange = (e) => {
@@ -83,29 +100,40 @@ const ProfileContent = () => {
   };
 
   const handleSave = async () => {
-    try {
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.accessToken || ''}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update profile');
-      }
-
-      const updatedProfile = await response.json();
-      setUserData(updatedProfile);
-      setIsEditing(false);
-      toast.success('Profile updated successfully');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast.error('Failed to update profile');
+  try {
+    // Get auth token from localStorage for custom auth
+    const authToken = localStorage.getItem('authToken');
+    
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Add authorization header if token exists
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
     }
-  };
+    
+    // Use correct lowercase path
+    const response = await fetch('/api/user/profile', {
+      method: 'PUT',
+      headers,
+      credentials: "include",
+      body: JSON.stringify(formData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update profile');
+    }
+
+    const updatedProfile = await response.json();
+    setUserData(updatedProfile);
+    setIsEditing(false);
+    toast.success('Profile updated successfully');
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    toast.error('Failed to update profile');
+  }
+};
 
   if (status === 'loading' || loading) {
     return (

@@ -12,8 +12,24 @@ const CompanyList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
+    // Get user data from localStorage or session
+    const getUserData = () => {
+      const userData = localStorage.getItem('userData');
+      if (userData) {
+        try {
+          return JSON.parse(userData);
+        } catch (error) {
+          console.error("Error parsing user data:", error);
+        }
+      }
+      return session?.user || null;
+    };
+
+    setCurrentUser(getUserData());
+    
     if (status !== "loading") {
       fetchCompanies();
     }
@@ -88,7 +104,7 @@ const CompanyList = () => {
               <CompanyCard
                 key={company._id}
                 company={company}
-                currentUser={session?.user || {}} // Ensure we always pass an object
+                currentUser={currentUser}
                 onPartnershipUpdate={fetchCompanies}
               />
             ))}

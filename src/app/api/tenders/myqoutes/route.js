@@ -1,34 +1,38 @@
-// app/api/partnerships/status/route.js
+// app/api/tenders/myquotes/route.js
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/libs/auth";
 import connectMongoDB from "@/libs/mongodb";
-import Partnership from "@/Models/Partnership";
-import User from "@/Models/user";
+import TenderQuote from "@/Models/TenderQuote";
 import jwt from 'jsonwebtoken';
 
 export async function GET(request) {
   try {
     await connectMongoDB();
-
+    
     let userId = null;
     
-    // Try NextAuth session first
+    // Check authentication via both methods
     const session = await getServerSession(authOptions);
     if (session?.user?.id) {
       userId = session.user.id;
-    } 
-    // If no session, try JWT token
-    else {
+    } else {
       const authHeader = request.headers.get('Authorization');
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
         try {
+          if (!process.env.JWT_SECRET) {
+            throw new Error("JWT secret not configured");
+          }
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
           userId = decoded.userId || decoded.id;
         } catch (tokenError) {
+          console.error("Token verification error:", tokenError);
           return new Response(
             JSON.stringify({ error: "Invalid or expired token" }),
-            { status: 401, headers: { "Content-Type": "application/json" } }
+            {
+              status: 401,
+              headers: { "Content-Type": "application/json" },
+            }
           );
         }
       }
@@ -36,40 +40,25 @@ export async function GET(request) {
 
     if (!userId) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({ error: "Unauthorized. Please log in." }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const companyId = searchParams.get("companyId");
-
-    if (!companyId) {
-      return new Response(
-        JSON.stringify({ error: "Company ID is required" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // Check if partnership exists
-    const partnership = await Partnership.findOne({
-      dealer: userId,
-      company: companyId,
-    });
-
-    if (!partnership) {
-      return new Response(
-        JSON.stringify({ status: null }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      );
-    }
+    // Get all quotes for this user
+    const quotes = await TenderQuote.find({ dealer: userId })
+      .select('tender status')
+      .populate('tender', 'title');
 
     return new Response(
-      JSON.stringify({ status: partnership.status }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      JSON.stringify({ quotes }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
     );
   } catch (error) {
-    console.error("Partnership status check error:", error);
+    console.error("Error fetching user quotes:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { "Content-Type": "application/json" } }

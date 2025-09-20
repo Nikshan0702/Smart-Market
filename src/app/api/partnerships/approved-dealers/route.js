@@ -1,4 +1,4 @@
-// app/api/partnerships/status/route.js
+// app/api/partnerships/approved-dealers/route.js
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/libs/auth";
 import connectMongoDB from "@/libs/mongodb";
@@ -9,26 +9,34 @@ import jwt from 'jsonwebtoken';
 export async function GET(request) {
   try {
     await connectMongoDB();
-
+    
     let userId = null;
     
-    // Try NextAuth session first
+    // First try NextAuth session
     const session = await getServerSession(authOptions);
     if (session?.user?.id) {
       userId = session.user.id;
     } 
-    // If no session, try JWT token
+    // If no session, check for token in headers (custom auth)
     else {
       const authHeader = request.headers.get('Authorization');
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
+        
         try {
+          if (!process.env.JWT_SECRET) {
+            throw new Error("JWT secret not configured");
+          }
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
           userId = decoded.userId || decoded.id;
         } catch (tokenError) {
+          console.error("Token verification error:", tokenError);
           return new Response(
             JSON.stringify({ error: "Invalid or expired token" }),
-            { status: 401, headers: { "Content-Type": "application/json" } }
+            {
+              status: 401,
+              headers: { "Content-Type": "application/json" },
+            }
           );
         }
       }
@@ -36,40 +44,25 @@ export async function GET(request) {
 
     if (!userId) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({ error: "Unauthorized. Please log in." }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const companyId = searchParams.get("companyId");
+    // Get all approved partnerships for this company
+    const partnerships = await Partnership.find({
+      company: userId,
+      status: "approved"
+    }).populate("dealer", "firstName lastName email companyDetails");
 
-    if (!companyId) {
-      return new Response(
-        JSON.stringify({ error: "Company ID is required" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
+    const dealers = partnerships.map(p => p.dealer);
 
-    // Check if partnership exists
-    const partnership = await Partnership.findOne({
-      dealer: userId,
-      company: companyId,
+    return new Response(JSON.stringify({ dealers }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
     });
-
-    if (!partnership) {
-      return new Response(
-        JSON.stringify({ status: null }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    return new Response(
-      JSON.stringify({ status: partnership.status }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    );
   } catch (error) {
-    console.error("Partnership status check error:", error);
+    console.error('Error fetching approved dealers:', error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { "Content-Type": "application/json" } }

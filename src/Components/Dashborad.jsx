@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Blogs from "@/DigitalMarketing/Blogs";
 import {
   Bars3Icon,
@@ -19,6 +20,17 @@ import {
 } from "@heroicons/react/24/outline";
 import ProfileContent from "./ProfileContent";
 import TenderContent from "./TenderContent";
+import CorporateDashboard from "./CorporateDashboard";
+import CompanyList from "./CompanyList";
+import DealerTenders from "./DealerTenders";
+
+// Define user roles
+const USER_ROLES = {
+  CORPORATE: "Corporate",
+  DEALER: "Dealer",
+  ADMIN: "Admin",
+  MARKETING_AGENCY: "MarketingAgency"
+};
 
 const mainMenuItems = [
   { 
@@ -48,12 +60,6 @@ const mainMenuItems = [
   },
 ];
 
-const teamMenuItems = [
-  { text: "Heroicons", color: "#1976d2" },
-  { text: "Tailwind Labs", color: "#dc004e" },
-  { text: "Workcotton", color: "#2e7d32" },
-];
-
 // Component for each navigation item
 const DashboardContent = () => (
   <div>
@@ -72,16 +78,9 @@ const InvoicesContent = () => (
   </div>
 );
 
-const TendersContent = () => (
+const TendersContent = ({ userRole }) => (
   <div>
-    {/* <div className="bg-white rounded-lg p-6 border shadow-sm mb-6">
-      <h2 className="text-xl font-semibold text-gray-800 mb-4">Tenders</h2>
-      <div className="bg-gray-50 p-8 rounded-md text-center">
-        <ClipboardDocumentListIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500 italic">Tender management will appear here</p>
-      </div>
-    </div> */}
-    <TenderContent/>
+    {userRole === USER_ROLES.CORPORATE ? <TenderContent /> : <DealerTenders />}
   </div>
 );
 
@@ -104,20 +103,70 @@ const BlogsContent = () => (
 );
 
 export default function Dashboard() {
+  const router = useRouter();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Get user data from localStorage on component mount
+  useEffect(() => {
+    const checkAuthentication = () => {
+      const authToken = localStorage.getItem('authToken');
+      const userData = localStorage.getItem('userData');
+      
+      if (!authToken || !userData) {
+        // Redirect to login if not authenticated
+        router.push('/SignInPage');
+        return;
+      }
+      
+      try {
+        const user = JSON.parse(userData);
+        
+        // Extract only simple values, not complex objects
+        const safeUser = {
+          name: user.name || 'User',
+          role: user.role || USER_ROLES.CORPORATE,
+          company: typeof user.company === 'object' ? user.company.name : user.company || 'DATTREO',
+          // Add other simple properties only
+        };
+        
+        setCurrentUser(safeUser);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        router.push('/SignInPage');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthentication();
+  }, [router]);
+
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userData');
+    localStorage.removeItem('rememberMe');
+    router.push('/SignInPage');
+  };
 
   const renderContent = () => {
+    if (!currentUser) return null;
+    
     const selectedComponent = mainMenuItems[selectedIndex].component;
     
     switch (selectedComponent) {
       case "Dashboard":
-        return <ProfileWrapper />;
+        return currentUser.role === USER_ROLES.CORPORATE 
+          ? <CorporateDashboard /> 
+          : <CompanyList />;
       case "Invoices":
         return <InvoicesContent />;
       case "Tenders":
-        return <TendersContent />;
-        case "Profile":
+        return <TendersContent userRole={currentUser.role} />;
+      case "Profile":
         return <ProfileWrapper />;        
       case "Blogs":
         return <Blogs />;
@@ -125,6 +174,34 @@ export default function Dashboard() {
         return <DashboardContent />;
     }
   };
+
+  // Generate initials from user name
+  const getUserInitials = () => {
+    if (!currentUser?.name) return 'U';
+    return currentUser.name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1976d2] mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show nothing if not authenticated (will redirect)
+  if (!currentUser) {
+    return null;
+  }
 
   return (
     <div className="flex min-h-screen bg-[#f8fafc]">
@@ -159,19 +236,22 @@ export default function Dashboard() {
             ))}
           </ul>
 
-
           <div className="my-6 border-t border-gray-200"></div>
 
           {/* User Profile */}
           <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1976d2] text-white text-sm font-semibold">
-              TC
+              {getUserInitials()}
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-800">Tom Cook</p>
-              <p className="text-xs text-gray-500">Admin · DATTREO</p>
+              <p className="text-sm font-semibold text-gray-800">{currentUser.name || 'User'}</p>
+              <p className="text-xs text-gray-500">
+                {currentUser.role} · {currentUser.company || 'DATTREO'}
+              </p>
             </div>
-            <Cog6ToothIcon className="h-5 w-5 text-gray-500" />
+            <button onClick={handleLogout} className="text-gray-500 hover:text-gray-700">
+              <ArrowRightOnRectangleIcon className="h-5 w-5" />
+            </button>
           </div>
         </nav>
       </aside>
@@ -207,7 +287,7 @@ export default function Dashboard() {
               </span>
             </button>
             <div className="h-9 w-9 flex items-center justify-center rounded-full bg-[#1976d2] text-white text-sm font-semibold">
-              TC
+              {getUserInitials()}
             </div>
           </div>
         </div>

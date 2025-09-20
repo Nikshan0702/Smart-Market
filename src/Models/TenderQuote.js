@@ -1,47 +1,45 @@
-import mongoose from 'mongoose';
+// Models/TenderQuote.js
+const mongoose = require('mongoose');
 
 const TenderQuoteSchema = new mongoose.Schema({
   tender: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Tender',
-    required: true
+    required: true,
   },
   dealer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
   },
   budget: {
     type: Number,
-    required: true
+    required: true,
   },
   notes: {
     type: String,
-    default: ''
   },
   quotationFile: {
     type: String,
-    required: true
   },
   status: {
     type: String,
-    enum: ['submitted', 'under_review', 'approved', 'rejected'],
-    default: 'submitted'
+    enum: ['submitted', 'approved', 'rejected'],
+    default: 'submitted',
   },
-  reviewedAt: {
-    type: Date
-  },
-  reviewNotes: {
-    type: String,
-    default: ''
-  }
 }, {
-  timestamps: true
+  timestamps: true,
 });
 
-// Index for efficient queries
-TenderQuoteSchema.index({ tender: 1, dealer: 1 }, { unique: true });
-TenderQuoteSchema.index({ dealer: 1 });
-TenderQuoteSchema.index({ status: 1 });
+// Add a virtual populate to the Tender model
+TenderQuoteSchema.virtual('quotes', {
+  ref: 'TenderQuote',
+  localField: '_id',
+  foreignField: 'tender',
+});
 
-export default mongoose.models.TenderQuote || mongoose.model('TenderQuote', TenderQuoteSchema);
+// Enable virtuals in JSON output
+TenderQuoteSchema.set('toJSON', { virtuals: true });
+TenderQuoteSchema.set('toObject', { virtuals: true });
+
+module.exports = mongoose.models.TenderQuote || mongoose.model('TenderQuote', TenderQuoteSchema);
