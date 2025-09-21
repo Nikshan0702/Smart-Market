@@ -191,7 +191,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1976d2] mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#288984] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading dashboard...</p>
         </div>
       </div>
@@ -207,7 +207,7 @@ export default function Dashboard() {
     <div className="flex min-h-screen bg-[#f8fafc]">
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} bg-white border-r border-gray-200 shadow-sm transition-all duration-300 overflow-hidden`}>
-        <div className="p-4 font-bold text-lg text-gray-800">DATTREO</div>
+        <div className="p-4 font-bold text-lg text-[#288984]">DATTREO</div>
         <nav className="px-3">
           <ul>
             {mainMenuItems.map((item, i) => (
@@ -216,7 +216,7 @@ export default function Dashboard() {
                   onClick={() => setSelectedIndex(i)}
                   className={`flex w-full items-center gap-3 px-3 py-2.5 rounded-md text-sm ${
                     selectedIndex === i
-                      ? "bg-[#1976d2] text-white"
+                      ? "bg-[#288984] text-white"
                       : "text-gray-600 hover:bg-blue-50"
                   }`}
                 >
@@ -240,7 +240,7 @@ export default function Dashboard() {
 
           {/* User Profile */}
           <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1976d2] text-white text-sm font-semibold">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#288984] text-white text-sm font-semibold">
               {getUserInitials()}
             </div>
             <div className="flex-1">
@@ -286,7 +286,7 @@ export default function Dashboard() {
                 4
               </span>
             </button>
-            <div className="h-9 w-9 flex items-center justify-center rounded-full bg-[#1976d2] text-white text-sm font-semibold">
+            <div className="h-9 w-9 flex items-center justify-center rounded-full bg-[#288984] text-white text-sm font-semibold">
               {getUserInitials()}
             </div>
           </div>

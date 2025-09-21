@@ -23,15 +23,13 @@ export default function TenderSystem() {
   return (
     <div className="flex flex-col min-h-screen bg-white">
       {/* Navbar */}
-      <header className="bg-blue-600 text-white shadow">
+      <header className="bg-[#288984] text-white shadow">
         <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold">TenderSystem</h1>
+          <h1 className="text-xl font-bold">SBCP</h1>
           <nav className="space-x-6">
-            <a href="#" className="hover:text-blue-200">Dashboard</a>
-            <a href="#" className="hover:text-blue-200">Tenders</a>
-            <a href="#" className="hover:text-blue-200">Vendors</a>
-            <a href="#" className="hover:text-blue-200">Reports</a>
-            <a href="#" className="hover:text-blue-200">Profile</a>
+            
+            <a href="/SignUpPage" className="hover:text-blue-200">Sign UP</a>
+            <a href="/SignInPage" className="hover:text-blue-200">Sign IN</a>
           </nav>
         </div>
       </header>
@@ -46,7 +44,7 @@ export default function TenderSystem() {
             <div className="mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 sm:gap-y-20 lg:mx-0 lg:max-w-none lg:grid-cols-2">
               <div className="lg:pr-8 lg:pt-4">
                 <div className="lg:max-w-lg">
-                  <h2 className="text-base font-semibold leading-7 text-blue-600">Tender Management System</h2>
+                  <h2 className="text-base font-semibold leading-7 text-[#288984]">Tender Management System</h2>
                   <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
                     Smarter Bidding, Stronger Connections
                   </p>
@@ -59,7 +57,7 @@ export default function TenderSystem() {
                       <div key={feature.name} className="relative pl-9">
                         <dt className="inline font-semibold text-gray-900">
                           <feature.icon
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded absolute left-1 top-1"
+                            className="h-4 w-4 text-[#288984] focus:ring-blue-500 border-gray-300 rounded absolute left-1 top-1"
                             aria-hidden="true"
                           />
                           {feature.name}
@@ -69,7 +67,7 @@ export default function TenderSystem() {
                     ))}
                   </dl>
                   <div className="mt-8">
-                    <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+                    <button className="rounded-md bg-[#288984] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
                       Explore Tenders
                     </button>
                   </div>

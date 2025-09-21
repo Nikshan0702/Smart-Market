@@ -432,7 +432,7 @@ const TendersContent = () => {
           <h1 className="text-2xl font-bold text-gray-800">Tender Management</h1>
           <button
             onClick={() => setShowCreateForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-[#288984] text-white rounded-md hover:bg-blue-700 transition-colors"
           >
             <PlusIcon className="h-5 w-5" />
             New Tender
@@ -750,7 +750,7 @@ const TendersContent = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    className="px-4 py-2 bg-[#288984] text-white rounded-md hover:bg-blue-700"
                   >
                     Publish Tender
                   </button>

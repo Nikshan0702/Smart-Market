@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/libs/auth";
 import connectMongoDB from "@/libs/mongodb";
 import Tender from "@/Models/Tender";
+import TenderQuote from "@/Models/TenderQuote";
 import jwt from 'jsonwebtoken';
 
 export async function GET(request, { params }) {
