@@ -14,6 +14,7 @@ import {
   DocumentTextIcon,
   UserIcon,
   NewspaperIcon,
+  BuildingStorefrontIcon,
   HomeIcon,
   CreditCardIcon,
   ClipboardDocumentListIcon,
@@ -23,6 +24,7 @@ import TenderContent from "./TenderContent";
 import CorporateDashboard from "./CorporateDashboard";
 import CompanyList from "./CompanyList";
 import DealerTenders from "./DealerTenders";
+import DealerWarehouse from "./DealerWarehouse";
 
 // Define user roles
 const USER_ROLES = {
@@ -58,6 +60,11 @@ const mainMenuItems = [
     icon: <NewspaperIcon className="h-5 w-5" />,
     component: "Blogs"
   },
+  { 
+    text: "Warehouses", 
+    icon: <BuildingStorefrontIcon className="h-5 w-5" />,
+    component: "Warehouses"
+  },
 ];
 
 // Component for each navigation item
@@ -87,6 +94,12 @@ const TendersContent = ({ userRole }) => (
 const ProfileWrapper = () => (
   <div>
     <ProfileContent />
+  </div>
+);
+
+const WarehouseContent = ({ userRole }) => (
+  <div>
+    {userRole === USER_ROLES.CORPORATE ? <TenderContent /> : <DealerWarehouse />}
   </div>
 );
 
@@ -170,6 +183,8 @@ export default function Dashboard() {
         return <ProfileWrapper />;        
       case "Blogs":
         return <Blogs />;
+      case "Warehouses":
+        return < WarehouseContent userRole={currentUser.role}/>;
       default:
         return <DashboardContent />;
     }
