@@ -25,6 +25,7 @@ import CorporateDashboard from "./CorporateDashboard";
 import CompanyList from "./CompanyList";
 import DealerTenders from "./DealerTenders";
 import DealerWarehouse from "./DealerWarehouse";
+import CorporateWarehouse from "./CorporateWarehouse";
 
 // Define user roles
 const USER_ROLES = {
@@ -99,7 +100,7 @@ const ProfileWrapper = () => (
 
 const WarehouseContent = ({ userRole }) => (
   <div>
-    {userRole === USER_ROLES.CORPORATE ? <TenderContent /> : <DealerWarehouse />}
+    {userRole === USER_ROLES.CORPORATE ? <CorporateWarehouse /> : <DealerWarehouse />}
   </div>
 );
 

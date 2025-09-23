@@ -13,17 +13,23 @@ import {
   PhotoIcon,
   TrashIcon,
   PencilIcon,
-  EyeIcon
+  EyeIcon,
+  ClockIcon,
+  CheckIcon,
+  XMarkIcon as XIcon
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 
 const DealerWarehouse = () => {
   const [warehouses, setWarehouses] = useState([]);
   const [filteredWarehouses, setFilteredWarehouses] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showWarehouseDetails, setShowWarehouseDetails] = useState(null);
   const [editWarehouse, setEditWarehouse] = useState(null);
+  const [activeTab, setActiveTab] = useState('warehouses');
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,6 +37,10 @@ const DealerWarehouse = () => {
   const [amenityFilter, setAmenityFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Booking filter states
+  const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
+  const [bookingSearchTerm, setBookingSearchTerm] = useState('');
 
   // Form data
   const [formData, setFormData] = useState({
@@ -47,7 +57,7 @@ const DealerWarehouse = () => {
     amenities: [],
     status: 'active',
     images: [],
-    newImages: [] // Store actual File objects for new uploads
+    newImages: []
   });
 
   const amenitiesList = [
@@ -63,30 +73,42 @@ const DealerWarehouse = () => {
     "Restrooms"
   ];
 
+  const bookingStatuses = [
+    'pending',
+    'confirmed',
+    'rejected',
+    'completed',
+    'cancelled'
+  ];
+
   useEffect(() => {
     fetchWarehouses();
   }, []);
 
   useEffect(() => {
+    if (activeTab === 'bookings') {
+      fetchBookings();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
     applyFilters();
   }, [warehouses, searchTerm, statusFilter, amenityFilter, sortBy]);
+
+  useEffect(() => {
+    applyBookingFilters();
+  }, [bookings, bookingStatusFilter, bookingSearchTerm]);
 
   const fetchWarehouses = async () => {
     try {
       setLoading(true);
       const authToken = localStorage.getItem('authToken');
       
-      const headers = {
-        "Content-Type": "application/json",
-      };
-      
-      if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
-      }
-      
       const response = await fetch('/api/warehouses/dealer', {
-        headers,
-        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken && { "Authorization": `Bearer ${authToken}` })
+        },
       });
 
       if (response.ok) {
@@ -100,6 +122,29 @@ const DealerWarehouse = () => {
       toast.error('Failed to load warehouses');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchBookings = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      
+      const response = await fetch('/api/bookings/dealer', {
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken && { "Authorization": `Bearer ${authToken}` })
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBookings(data.bookings || []);
+      } else {
+        throw new Error('Failed to fetch bookings');
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      toast.error('Failed to load bookings');
     }
   };
 
@@ -159,6 +204,35 @@ const DealerWarehouse = () => {
     setFilteredWarehouses(filtered);
   };
 
+  const applyBookingFilters = () => {
+    let filtered = [...bookings];
+
+    // Apply status filter
+    if (bookingStatusFilter !== 'all') {
+      filtered = filtered.filter(booking => booking.status === bookingStatusFilter);
+    }
+
+    // Apply search filter
+    if (bookingSearchTerm) {
+      const searchTermLower = bookingSearchTerm.toLowerCase();
+      filtered = filtered.filter(booking => {
+        const warehouseName = booking.warehouse?.name ? booking.warehouse.name.toLowerCase() : '';
+        const corporateName = booking.corporate?.companyDetails?.name ? 
+          booking.corporate.companyDetails.name.toLowerCase() : '';
+        const userName = booking.corporate ? 
+          `${booking.corporate.firstName || ''} ${booking.corporate.lastName || ''}`.toLowerCase() : '';
+        
+        return (
+          warehouseName.includes(searchTermLower) ||
+          corporateName.includes(searchTermLower) ||
+          userName.includes(searchTermLower)
+        );
+      });
+    }
+
+    setFilteredBookings(filtered);
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -179,13 +253,12 @@ const DealerWarehouse = () => {
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
     
-    // Create preview URLs for display
     const newImagePreviews = files.map(file => URL.createObjectURL(file));
     
     setFormData(prev => ({
       ...prev,
       images: [...prev.images, ...newImagePreviews],
-      newImages: [...prev.newImages, ...files] // Store actual File objects
+      newImages: [...prev.newImages, ...files]
     }));
   };
 
@@ -198,63 +271,58 @@ const DealerWarehouse = () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  try {
-    const authToken = localStorage.getItem('authToken');
+    e.preventDefault();
     
-    if (!authToken) {
-      toast.error('Please log in to create a warehouse');
-      return;
+    try {
+      const authToken = localStorage.getItem('authToken');
+      
+      if (!authToken) {
+        toast.error('Please log in to create a warehouse');
+        return;
+      }
+
+      const formDataToSend = new FormData();
+      
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('description', formData.description);
+      formDataToSend.append('address', formData.address);
+      formDataToSend.append('city', formData.city);
+      formDataToSend.append('state', formData.state);
+      formDataToSend.append('zipCode', formData.zipCode);
+      formDataToSend.append('totalArea', formData.totalArea);
+      formDataToSend.append('availableArea', formData.availableArea);
+      formDataToSend.append('dailyRate', formData.dailyRate);
+      formDataToSend.append('minBookingDays', formData.minBookingDays);
+      formDataToSend.append('amenities', JSON.stringify(formData.amenities));
+      formDataToSend.append('status', formData.status);
+
+      formData.newImages.forEach((file) => {
+        formDataToSend.append('images', file);
+      });
+
+      const response = await fetch('/api/warehouses', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: formDataToSend,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setWarehouses(prev => [result.warehouse, ...prev]);
+        setShowCreateForm(false);
+        resetForm();
+        toast.success('Warehouse added successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to create warehouse');
+      }
+    } catch (error) {
+      console.error('Error creating warehouse:', error);
+      toast.error(error.message || 'Failed to add warehouse');
     }
-
-    // Create FormData object
-    const formDataToSend = new FormData();
-    
-    // Append all form fields
-    formDataToSend.append('name', formData.name);
-    formDataToSend.append('description', formData.description);
-    formDataToSend.append('address', formData.address);
-    formDataToSend.append('city', formData.city);
-    formDataToSend.append('state', formData.state);
-    formDataToSend.append('zipCode', formData.zipCode);
-    formDataToSend.append('totalArea', formData.totalArea);
-    formDataToSend.append('availableArea', formData.availableArea);
-    formDataToSend.append('dailyRate', formData.dailyRate);
-    formDataToSend.append('minBookingDays', formData.minBookingDays);
-    formDataToSend.append('amenities', JSON.stringify(formData.amenities));
-    formDataToSend.append('status', formData.status);
-
-    // Append image files
-    formData.newImages.forEach((file, index) => {
-      formDataToSend.append('images', file);
-    });
-
-    // ✅ REMOVE Content-Type header - let browser set it automatically
-    const response = await fetch('/api/warehouses', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        // ❌ Remove this line: 'Content-Type': 'application/json',
-      },
-      body: formDataToSend, // FormData will set the correct Content-Type
-    });
-
-    const result = await response.json();
-
-    if (response.ok) {
-      setWarehouses(prev => [result.warehouse, ...prev]);
-      setShowCreateForm(false);
-      resetForm();
-      toast.success('Warehouse added successfully!');
-    } else {
-      throw new Error(result.error || 'Failed to create warehouse');
-    }
-  } catch (error) {
-    console.error('Error creating warehouse:', error);
-    toast.error(error.message || 'Failed to add warehouse');
-  }
-};
+  };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -267,10 +335,8 @@ const DealerWarehouse = () => {
         return;
       }
 
-      // Create FormData object
       const formDataToSend = new FormData();
       
-      // Append all form fields
       formDataToSend.append('name', formData.name);
       formDataToSend.append('description', formData.description);
       formDataToSend.append('address', formData.address);
@@ -285,8 +351,7 @@ const DealerWarehouse = () => {
       formDataToSend.append('status', formData.status);
       formDataToSend.append('existingImages', JSON.stringify(formData.images));
 
-      // Append new image files
-      formData.newImages.forEach((file, index) => {
+      formData.newImages.forEach((file) => {
         formDataToSend.append('newImages', file);
       });
 
@@ -350,6 +415,36 @@ const DealerWarehouse = () => {
     }
   };
 
+  const handleBookingAction = async (bookingId, action, notes = '') => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      
+      const response = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          action,
+          dealerNotes: notes
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast.success(`Booking ${action}ed successfully!`);
+        fetchBookings();
+      } else {
+        throw new Error(result.error || `Failed to ${action} booking`);
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing booking:`, error);
+      toast.error(error.message || `Failed to ${action} booking`);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -396,6 +491,11 @@ const DealerWarehouse = () => {
     setSortBy('newest');
   };
 
+  const clearBookingFilters = () => {
+    setBookingStatusFilter('all');
+    setBookingSearchTerm('');
+  };
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -404,7 +504,43 @@ const DealerWarehouse = () => {
     });
   };
 
-  if (loading) {
+  const formatDateTime = (dateString) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getStatusBadge = (status) => {
+    const statusColors = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      confirmed: 'bg-green-100 text-green-800',
+      rejected: 'bg-red-100 text-red-800',
+      completed: 'bg-blue-100 text-blue-800',
+      cancelled: 'bg-gray-100 text-gray-800',
+      active: 'bg-green-100 text-green-800',
+      inactive: 'bg-gray-100 text-gray-800'
+    };
+    
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status] || 'bg-gray-100 text-gray-800'}`}>
+        {status}
+      </span>
+    );
+  };
+
+  const calculateDaysRemaining = (endDate) => {
+    const end = new Date(endDate);
+    const today = new Date();
+    const diffTime = end - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  };
+
+  if (loading && activeTab === 'warehouses') {
     return (
       <div className="bg-white rounded-lg p-6 border shadow-sm">
         <div className="animate-pulse">
@@ -435,116 +571,444 @@ const DealerWarehouse = () => {
         </div>
 
         <p className="text-gray-600">
-          Manage your warehouse spaces and availability for corporate clients.
+          Manage your warehouse spaces and booking requests from corporate clients.
         </p>
+
+        {/* Tabs */}
+        <div className="mt-4 border-b">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('warehouses')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'warehouses'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              My Warehouses ({warehouses.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('bookings')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'bookings'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Booking Requests ({bookings.length})
+            </button>
+          </nav>
+        </div>
       </div>
 
-      {/* Search and Filter Section */}
-      <div className="bg-white rounded-lg p-6 border shadow-sm">
-        <div className="flex flex-col md:flex-row gap-4 mb-4">
-          {/* Search Input */}
-          <div className="flex-1 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search warehouses by name, description, or location..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+      {activeTab === 'warehouses' ? (
+        <>
+          {/* Search and Filter Section */}
+          <div className="bg-white rounded-lg p-6 border shadow-sm">
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+              <div className="flex-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search warehouses by name, description, or location..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
 
-          {/* Filter Toggle Button */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-          >
-            <AdjustmentsHorizontalIcon className="h-5 w-5" />
-            Filters
-          </button>
-        </div>
-
-        {/* Expanded Filters */}
-        {showFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border">
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-
-            {/* Amenity Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Amenity
-              </label>
-              <select
-                value={amenityFilter}
-                onChange={(e) => setAmenityFilter(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Amenities</option>
-                {amenitiesList.map(amenity => (
-                  <option key={amenity} value={amenity}>{amenity}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Sort By */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Sort By
-              </label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="rate-asc">Rate (Low to High)</option>
-                <option value="rate-desc">Rate (High to Low)</option>
-                <option value="size-asc">Size (Small to Large)</option>
-                <option value="size-desc">Size (Large to Small)</option>
-              </select>
-            </div>
-
-            {/* Clear Filters */}
-            <div className="flex items-end">
               <button
-                onClick={clearFilters}
-                className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
               >
-                Clear Filters
+                <AdjustmentsHorizontalIcon className="h-5 w-5" />
+                Filters
               </button>
             </div>
-          </div>
-        )}
 
-        {/* Results Count */}
-        <div className="flex justify-between items-center mt-4">
-          <span className="text-sm text-gray-600">
-            Showing {filteredWarehouses.length} of {warehouses.length} warehouses
-          </span>
-          {searchTerm || statusFilter !== 'all' || amenityFilter !== 'all' ? (
-            <span className="text-sm text-blue-600">
-              {filteredWarehouses.length === 0 ? 'No results match your filters' : 'Filtered results'}
-            </span>
-          ) : null}
+            {showFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Amenity
+                  </label>
+                  <select
+                    value={amenityFilter}
+                    onChange={(e) => setAmenityFilter(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Amenities</option>
+                    {amenitiesList.map(amenity => (
+                      <option key={amenity} value={amenity}>{amenity}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sort By
+                  </label>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="rate-asc">Rate (Low to High)</option>
+                    <option value="rate-desc">Rate (High to Low)</option>
+                    <option value="size-asc">Size (Small to Large)</option>
+                    <option value="size-desc">Size (Large to Small)</option>
+                  </select>
+                </div>
+
+                <div className="flex items-end">
+                  <button
+                    onClick={clearFilters}
+                    className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center mt-4">
+              <span className="text-sm text-gray-600">
+                Showing {filteredWarehouses.length} of {warehouses.length} warehouses
+              </span>
+              {searchTerm || statusFilter !== 'all' || amenityFilter !== 'all' ? (
+                <span className="text-sm text-blue-600">
+                  {filteredWarehouses.length === 0 ? 'No results match your filters' : 'Filtered results'}
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          {/* Warehouses Grid */}
+          <div className="bg-white rounded-lg p-6 border shadow-sm">
+            <h2 className="text-xl font-semibold mb-6">
+              My Warehouses ({filteredWarehouses.length})
+              {searchTerm && ` for "${searchTerm}"`}
+            </h2>
+            
+            {filteredWarehouses.length === 0 ? (
+              <div className="text-center py-12">
+                <BuildingStorefrontIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">
+                  {warehouses.length === 0 
+                    ? "No warehouses added yet." 
+                    : "No warehouses match your search criteria."}
+                </p>
+                {warehouses.length === 0 && (
+                  <button
+                    onClick={() => setShowCreateForm(true)}
+                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Add Your First Warehouse
+                  </button>
+                )}
+                {(searchTerm || statusFilter !== 'all' || amenityFilter !== 'all') && (
+                  <button
+                    onClick={clearFilters}
+                    className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredWarehouses.map((warehouse) => (
+                  <div
+                    key={warehouse._id}
+                    className={`border rounded-lg p-4 hover:shadow-md transition-shadow relative ${
+                      warehouse.status === 'inactive' ? 'bg-gray-50 opacity-75' : 'bg-white'
+                    }`}
+                  >
+                    <div className="h-48 bg-gray-200 rounded-lg mb-4 overflow-hidden">
+                      {warehouse.images && warehouse.images.length > 0 ? (
+                        <img
+                          src={warehouse.images[0]}
+                          alt={warehouse.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                          <BuildingStorefrontIcon className="h-12 w-12 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="absolute top-4 right-4">
+                      {getStatusBadge(warehouse.status)}
+                    </div>
+
+                    <h3 className="font-semibold text-lg mb-2">{warehouse.name}</h3>
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{warehouse.description}</p>
+
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <MapPinIcon className="h-4 w-4" />
+                        <span>{warehouse.city}, {warehouse.state}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <ArrowsPointingOutIcon className="h-4 w-4" />
+                        <span>{warehouse.availableArea} sqft available</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <CurrencyDollarIcon className="h-4 w-4" />
+                        <span>${warehouse.dailyRate}/day</span>
+                      </div>
+                    </div>
+
+                    {warehouse.amenities && warehouse.amenities.length > 0 && (
+                      <div className="mt-3">
+                        <div className="flex flex-wrap gap-1">
+                          {warehouse.amenities.slice(0, 3).map((amenity, index) => (
+                            <span
+                              key={index}
+                              className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                            >
+                              {amenity}
+                            </span>
+                          ))}
+                          {warehouse.amenities.length > 3 && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">
+                              +{warehouse.amenities.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500">
+                          Added {formatDate(warehouse.createdAt)}
+                        </span>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => setShowWarehouseDetails(warehouse)}
+                            className="text-blue-600 hover:text-blue-800"
+                            title="View details"
+                          >
+                            <EyeIcon className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => loadWarehouseForEdit(warehouse)}
+                            className="text-gray-600 hover:text-gray-800"
+                            title="Edit"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        /* Bookings Tab Content */
+        <div className="space-y-6">
+          {/* Booking Search and Filters */}
+          <div className="bg-white rounded-lg p-6 border shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="md:col-span-2">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search bookings by warehouse name, company name..."
+                    value={bookingSearchTerm}
+                    onChange={(e) => setBookingSearchTerm(e.target.value)}
+                    className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-4">
+                <select
+                  value={bookingStatusFilter}
+                  onChange={(e) => setBookingStatusFilter(e.target.value)}
+                  className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Statuses</option>
+                  {bookingStatuses.map(status => (
+                    <option key={status} value={status}>
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </option>
+                  ))}
+                </select>
+                
+                <button
+                  onClick={fetchBookings}
+                  className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                >
+                  <ClockIcon className="h-4 w-4" />
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">
+                Showing {filteredBookings.length} of {bookings.length} bookings
+              </span>
+              {(bookingStatusFilter !== 'all' || bookingSearchTerm) && (
+                <button
+                  onClick={clearBookingFilters}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Bookings List */}
+          <div className="bg-white rounded-lg p-6 border shadow-sm">
+            <h2 className="text-xl font-semibold mb-6">
+              Booking Requests ({filteredBookings.length})
+            </h2>
+            
+            {filteredBookings.length === 0 ? (
+              <div className="text-center py-12">
+                <ClockIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">
+                  {bookings.length === 0 
+                    ? "No booking requests yet." 
+                    : "No bookings match your filter criteria."}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredBookings.map((booking) => (
+                  <div key={booking._id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-semibold text-lg">{booking.warehouse?.name}</h3>
+                        <p className="text-gray-600 text-sm">
+                          Requested by: {booking.corporate?.companyDetails?.name || `${booking.corporate?.firstName} ${booking.corporate?.lastName}`}
+                        </p>
+                      </div>
+                      {getStatusBadge(booking.status)}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-3">
+                      <div>
+                        <span className="font-medium">Dates:</span>
+                        <p>{formatDate(booking.startDate)} to {formatDate(booking.endDate)}</p>
+                        {booking.status === 'confirmed' && (
+                          <p className="text-xs text-green-600">
+                            {calculateDaysRemaining(booking.endDate)} days remaining
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <span className="font-medium">Area:</span>
+                        <p>{booking.requiredArea} sqft</p>
+                      </div>
+                      <div>
+                        <span className="font-medium">Total Price:</span>
+                        <p>${booking.totalPrice?.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium">Requested:</span>
+                        <p>{formatDateTime(booking.createdAt)}</p>
+                      </div>
+                    </div>
+
+                    {booking.specialRequirements && (
+                      <div className="mb-3">
+                        <span className="font-medium text-sm">Special Requirements:</span>
+                        <p className="text-sm text-gray-600 mt-1">{booking.specialRequirements}</p>
+                      </div>
+                    )}
+
+                    {booking.dealerNotes && (
+                      <div className="mb-3 p-2 bg-gray-50 rounded">
+                        <span className="font-medium text-sm">Your Notes:</span>
+                        <p className="text-sm text-gray-600 mt-1">{booking.dealerNotes}</p>
+                      </div>
+                    )}
+
+                    {booking.status === 'pending' && (
+                      <div className="flex gap-2 mt-4">
+                        <button
+                          onClick={() => handleBookingAction(booking._id, 'confirm')}
+                          className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                        >
+                          <CheckIcon className="h-4 w-4" />
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => {
+                            const notes = prompt('Please provide a reason for rejection:');
+                            if (notes !== null) {
+                              handleBookingAction(booking._id, 'reject', notes);
+                            }
+                          }}
+                          className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
+                        >
+                          <XIcon className="h-4 w-4" />
+                          Reject
+                        </button>
+                      </div>
+                    )}
+
+                    {booking.status === 'confirmed' && (
+                      <div className="flex gap-2 mt-4">
+                        <button
+                          onClick={() => handleBookingAction(booking._id, 'complete')}
+                          className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                        >
+                          <CheckIcon className="h-4 w-4" />
+                          Mark as Completed
+                        </button>
+                        <button
+                          onClick={() => {
+                            const notes = prompt('Please provide a reason for cancellation:');
+                            if (notes !== null) {
+                              handleBookingAction(booking._id, 'cancel', notes);
+                            }
+                          }}
+                          className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm"
+                        >
+                          <XIcon className="h-4 w-4" />
+                          Cancel Booking
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Create/Edit Warehouse Form Modal */}
       {(showCreateForm || editWarehouse) && (
@@ -827,13 +1291,7 @@ const DealerWarehouse = () => {
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Status</dt>
                     <dd className="text-sm">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        showWarehouseDetails.status === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {showWarehouseDetails.status}
-                      </span>
+                      {getStatusBadge(showWarehouseDetails.status)}
                     </dd>
                   </div>
                 </dl>
@@ -910,7 +1368,7 @@ const DealerWarehouse = () => {
                 Edit
               </button>
               <button
-                onClick={() => deleteWarehouse(showWarehouseDetails.id)}
+                onClick={() => deleteWarehouse(showWarehouseDetails._id)}
                 className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
               >
                 <TrashIcon className="h-4 w-4" />
@@ -920,140 +1378,6 @@ const DealerWarehouse = () => {
           </div>
         </div>
       )}
-
-      {/* Warehouses Grid */}
-      <div className="bg-white rounded-lg p-6 border shadow-sm">
-        <h2 className="text-xl font-semibold mb-6">
-          My Warehouses ({filteredWarehouses.length})
-          {searchTerm && ` for "${searchTerm}"`}
-        </h2>
-        
-        {filteredWarehouses.length === 0 ? (
-          <div className="text-center py-12">
-            <BuildingStorefrontIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">
-              {warehouses.length === 0 
-                ? "No warehouses added yet." 
-                : "No warehouses match your search criteria."}
-            </p>
-            {warehouses.length === 0 && (
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Add Your First Warehouse
-              </button>
-            )}
-            {(searchTerm || statusFilter !== 'all' || amenityFilter !== 'all') && (
-              <button
-                onClick={clearFilters}
-                className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-              >
-                Clear Filters
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredWarehouses.map((warehouse) => (
-              <div
-                key={warehouse.id}
-                className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
-                  warehouse.status === 'inactive' ? 'bg-gray-50 opacity-75' : 'bg-white'
-                }`}
-              >
-                <div className="h-48 bg-gray-200 rounded-lg mb-4 overflow-hidden">
-                  {warehouse.images && warehouse.images.length > 0 ? (
-                    <img
-                      src={warehouse.images[0]}
-                      alt={warehouse.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                      <BuildingStorefrontIcon className="h-12 w-12 text-gray-400" />
-                    </div>
-                  )}
-                  
-                  
-                </div>
-
-                <h3 className="font-semibold text-lg mb-2">{warehouse.name}</h3>
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{warehouse.description}</p>
-
-                {/* <div className="absolute top-4 right-4"> */}
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      warehouse.status === 'active' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {warehouse.status}
-                    </span>
-                  {/* </div> */}
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <MapPinIcon className="h-4 w-4" />
-                    <span>{warehouse.city}, {warehouse.state}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <ArrowsPointingOutIcon className="h-4 w-4" />
-                    <span>{warehouse.availableArea} sqft available</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <CurrencyDollarIcon className="h-4 w-4" />
-                    <span>${warehouse.dailyRate}/day</span>
-                  </div>
-                </div>
-
-                {warehouse.amenities && warehouse.amenities.length > 0 && (
-                  <div className="mt-3">
-                    <div className="flex flex-wrap gap-1">
-                      {warehouse.amenities.slice(0, 3).map((amenity, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-                        >
-                          {amenity}
-                        </span>
-                      ))}
-                      {warehouse.amenities.length > 3 && (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">
-                          +{warehouse.amenities.length - 3} more
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-4 pt-4 border-t">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">
-                      Added {formatDate(warehouse.createdAt)}
-                    </span>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => setShowWarehouseDetails(warehouse)}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="View details"
-                      >
-                        <EyeIcon className="h-4 w-4" />
-                      </button>
-                      <button 
-                        onClick={() => loadWarehouseForEdit(warehouse)}
-                        className="text-gray-600 hover:text-gray-800"
-                        title="Edit"
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 };
