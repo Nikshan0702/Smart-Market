@@ -4,6 +4,7 @@ import { authOptions } from "@/libs/auth";
 import connectMongoDB from "@/libs/mongodb";
 import Warehouse from "@/Models/Warehouse";
 import Booking from "@/Models/Booking";
+import jwt from 'jsonwebtoken';
 
 export async function POST(request) {
   try {
@@ -11,11 +12,25 @@ export async function POST(request) {
     const body = await request.json();
     const { warehouseId, startDate, endDate, requiredArea } = body;
 
+    console.log("Availability check:", { warehouseId, startDate, endDate, requiredArea });
+
     // Check if warehouse exists and has enough space
     const warehouse = await Warehouse.findById(warehouseId);
-    if (!warehouse || warehouse.availableArea < requiredArea) {
+    if (!warehouse) {
       return new Response(
-        JSON.stringify({ available: false }),
+        JSON.stringify({ available: false, reason: "Warehouse not found" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (warehouse.availableArea < requiredArea) {
+      return new Response(
+        JSON.stringify({ 
+          available: false, 
+          reason: "Insufficient available space",
+          availableArea: warehouse.availableArea,
+          requestedArea: requiredArea
+        }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -23,7 +38,7 @@ export async function POST(request) {
     // Check for overlapping bookings
     const overlappingBookings = await Booking.find({
       warehouse: warehouseId,
-      status: { $in: ['confirmed', 'pending'] },
+      status: { $in: ['pending', 'confirmed'] },
       $or: [
         { startDate: { $lte: new Date(endDate) }, endDate: { $gte: new Date(startDate) } }
       ]
@@ -36,8 +51,20 @@ export async function POST(request) {
 
     const available = (warehouse.availableArea - bookedArea) >= requiredArea;
 
+    console.log("Availability result:", {
+      available,
+      warehouseArea: warehouse.availableArea,
+      bookedArea,
+      remainingArea: warehouse.availableArea - bookedArea,
+      requestedArea: requiredArea
+    });
+
     return new Response(
-      JSON.stringify({ available }),
+      JSON.stringify({ 
+        available,
+        availableArea: warehouse.availableArea - bookedArea,
+        requestedArea: requiredArea
+      }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
