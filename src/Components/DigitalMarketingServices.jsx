@@ -15,7 +15,11 @@ import {
   GlobeAltIcon,
   CheckIcon,
   XMarkIcon,
-  FunnelIcon
+  FunnelIcon,
+  TagIcon,
+  ClockIcon,
+  ChartBarIcon,
+  MegaphoneIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { toast } from 'react-toastify';
@@ -31,283 +35,194 @@ const DigitalMarketingServices = () => {
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
-  const [serviceFilter, setServiceFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [priceRange, setPriceRange] = useState([0, 10000]);
   const [ratingFilter, setRatingFilter] = useState(0);
   const [locationFilter, setLocationFilter] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Service types
-  const serviceTypes = [
-    'TV Advertising',
-    'Social Media Marketing',
-    'Creative Services',
-    'Digital Strategy',
-    'Content Marketing',
-    'Influencer Marketing',
-    'SEO/SEM',
-    'Email Marketing'
-  ];
-
-  // Sample data structure (replace with actual API data)
-  const sampleAgencies = [
-    {
-      id: 1,
-      name: 'Prime Media Solutions',
-      logo: '/api/placeholder/100/100',
-      description: 'Full-service digital marketing agency specializing in TV and social media campaigns',
-      rating: 4.8,
-      reviews: 124,
-      location: 'New York, NY',
-      contact: {
-        phone: '+1 (555) 123-4567',
-        email: 'contact@primemedia.com',
-        website: 'www.primemedia.com'
-      },
-      services: ['TV Advertising', 'Social Media Marketing', 'Creative Services'],
-      packages: [
-        {
-          id: 1,
-          name: 'Starter TV Package',
-          type: 'TV Advertising',
-          price: 5000,
-          duration: '1 month',
-          features: [
-            '30-second TV spot production',
-            'Prime time slot (1x per week)',
-            'Basic analytics report',
-            '1 creative concept'
-          ],
-          description: 'Perfect for small businesses looking to test TV advertising'
-        },
-        {
-          id: 2,
-          name: 'Social Media Pro',
-          type: 'Social Media Marketing',
-          price: 3000,
-          duration: '3 months',
-          features: [
-            'Complete social media strategy',
-            'Content creation (20 posts/month)',
-            'Community management',
-            'Performance analytics',
-            'Monthly strategy calls'
-          ],
-          description: 'Comprehensive social media management for growing brands'
-        },
-        {
-          id: 3,
-          name: 'Creative Bundle',
-          type: 'Creative Services',
-          price: 2500,
-          duration: '2 weeks',
-          features: [
-            'Brand identity design',
-            '5 social media creatives',
-            '1 video advertisement',
-            'Copywriting services',
-            'Unlimited revisions'
-          ],
-          description: 'Complete creative package for brand development'
-        }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Digital Wave Agency',
-      logo: '/api/placeholder/100/100',
-      description: 'Innovative digital marketing experts focused on measurable results',
-      rating: 4.6,
-      reviews: 89,
-      location: 'Los Angeles, CA',
-      contact: {
-        phone: '+1 (555) 987-6543',
-        email: 'hello@digitalwave.com',
-        website: 'www.digitalwave.com'
-      },
-      services: ['Social Media Marketing', 'Creative Services', 'Influencer Marketing'],
-      packages: [
-        {
-          id: 4,
-          name: 'Influencer Campaign',
-          type: 'Influencer Marketing',
-          price: 8000,
-          duration: '2 months',
-          features: [
-            'Influencer identification & vetting',
-            '5 influencer collaborations',
-            'Content amplification',
-            'ROI tracking',
-            'Campaign report'
-          ],
-          description: 'Leverage influencer power for brand awareness'
-        },
-        {
-          id: 5,
-          name: 'Creative Studio',
-          type: 'Creative Services',
-          price: 4500,
-          duration: '1 month',
-          features: [
-            '10 high-quality creatives',
-            'Video production (2 videos)',
-            'Graphic design assets',
-            'Brand guidelines',
-            'Dedicated creative team'
-          ],
-          description: 'Professional creative assets for all platforms'
-        }
-      ]
-    },
-    {
-      id: 3,
-      name: 'Broadcast Masters',
-      logo: '/api/placeholder/100/100',
-      description: 'TV advertising specialists with 20+ years of industry experience',
-      rating: 4.9,
-      reviews: 156,
-      location: 'Chicago, IL',
-      contact: {
-        phone: '+1 (555) 456-7890',
-        email: 'info@broadcastmasters.com',
-        website: 'www.broadcastmasters.com'
-      },
-      services: ['TV Advertising', 'Digital Strategy'],
-      packages: [
-        {
-          id: 6,
-          name: 'Prime Time Package',
-          type: 'TV Advertising',
-          price: 15000,
-          duration: '3 months',
-          features: [
-            '60-second TV commercial production',
-            'Prime time slots (3x per week)',
-            'National coverage',
-            'A/B testing',
-            'Detailed analytics dashboard'
-          ],
-          description: 'Premium TV advertising for maximum reach'
-        },
-        {
-          id: 7,
-          name: 'Digital Combo',
-          type: 'Digital Strategy',
-          price: 7000,
-          duration: '6 months',
-          features: [
-            'Complete digital audit',
-            'Multi-channel strategy',
-            'Performance monitoring',
-            'Monthly optimization',
-            'Dedicated account manager'
-          ],
-          description: 'Holistic digital strategy for long-term growth'
-        }
-      ]
-    }
+  // Service categories (same as your packages)
+  const categoriesList = [
+    "Social Media Marketing",
+    "SEO & Content Marketing",
+    "PPC Advertising",
+    "Email Marketing",
+    "Influencer Marketing",
+    "Brand Strategy",
+    "Web Design & Development",
+    "Video Marketing",
+    "Complete Digital Marketing",
+    "Local SEO"
   ];
 
   useEffect(() => {
-    fetchAgencies();
+    fetchAgenciesWithPackages();
   }, []);
 
   useEffect(() => {
     applyFilters();
-  }, [agencies, searchTerm, serviceFilter, priceRange, ratingFilter, locationFilter]);
+  }, [agencies, searchTerm, categoryFilter, priceRange, ratingFilter, locationFilter]);
 
-  // In your DigitalMarketingServices component, update these functions:
+  const fetchAgenciesWithPackages = async () => {
+    try {
+      setLoading(true);
+      const authToken = localStorage.getItem('authToken');
+      
+      // Fetch all agencies with their packages
+      const response = await fetch('/api/marketing-agencies', {
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken && { "Authorization": `Bearer ${authToken}` })
+        },
+      });
 
-const fetchAgencies = async () => {
-  try {
-    setLoading(true);
-    const authToken = localStorage.getItem('authToken');
-    
-    const response = await fetch('/api/marketing-agencies', {
-      headers: {
-        "Content-Type": "application/json",
-        ...(authToken && { "Authorization": `Bearer ${authToken}` })
-      },
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      setAgencies(data.agencies || []);
-    } else {
-      // Fallback to sample data if API fails
-      setAgencies(sampleAgencies);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Fetched agencies with packages:', data);
+        setAgencies(data.agencies || []);
+      } else {
+        // Fallback: fetch agencies and packages separately
+        await fetchAgenciesAndPackagesSeparately();
+      }
+    } catch (error) {
+      console.error('Error fetching agencies:', error);
+      await fetchAgenciesAndPackagesSeparately();
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Error fetching agencies:', error);
-    setAgencies(sampleAgencies);
-    toast.error('Failed to load marketing agencies');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-const handleRequestProposal = async (agency, pkg) => {
-  try {
-    const authToken = localStorage.getItem('authToken');
-    const additionalRequirements = document.querySelector('textarea')?.value || '';
+  const fetchAgenciesAndPackagesSeparately = async () => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      
+      // Fetch all agencies
+      const agenciesResponse = await fetch('/api/users?role=agency', {
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken && { "Authorization": `Bearer ${authToken}` })
+        },
+      });
 
-    const response = await fetch('/api/marketing-proposals', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
-      },
-      body: JSON.stringify({
-        agencyId: agency._id,
-        packageId: pkg._id || pkg.id, // Handle both sample and real data
-        additionalRequirements,
-        budget: pkg.price,
-        timeline: pkg.duration
-      })
-    });
-
-    const result = await response.json();
-
-    if (response.ok) {
-      toast.success(`Proposal request sent to ${agency.name} for ${pkg.name}`);
-      setShowPackageModal(false);
-    } else {
-      throw new Error(result.error || 'Failed to submit proposal');
+      if (agenciesResponse.ok) {
+        const agenciesData = await agenciesResponse.json();
+        const agenciesWithPackages = [];
+        
+        // Fetch packages for each agency
+        for (const agency of agenciesData.users || []) {
+          try {
+            const packagesResponse = await fetch(`/api/agency/packages?agencyId=${agency._id}`, {
+              headers: {
+                "Content-Type": "application/json",
+                ...(authToken && { "Authorization": `Bearer ${authToken}` })
+              },
+            });
+            
+            if (packagesResponse.ok) {
+              const packagesData = await packagesResponse.json();
+              const activePackages = (packagesData.packages || []).filter(pkg => 
+                pkg.status === 'active' || pkg.status === 'featured'
+              );
+              
+              if (activePackages.length > 0) {
+                agenciesWithPackages.push({
+                  ...agency,
+                  packages: activePackages,
+                  services: [...new Set(activePackages.map(pkg => pkg.category))], // Extract services from package categories
+                  rating: agency.rating || 4.5, // Default rating
+                  reviews: agency.reviews || Math.floor(Math.random() * 100) + 20 // Default reviews
+                });
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching packages for agency ${agency._id}:`, error);
+          }
+        }
+        
+        setAgencies(agenciesWithPackages);
+      }
+    } catch (error) {
+      console.error('Error in fallback fetch:', error);
+      toast.error('Failed to load marketing agencies');
     }
-  } catch (error) {
-    console.error('Error submitting proposal:', error);
-    toast.error(error.message || 'Failed to submit proposal request');
-  }
-};
+  };
 
-const handleContactAgency = async (agency) => {
-  try {
-    const authToken = localStorage.getItem('authToken');
-    
-    const response = await fetch('/api/marketing-agencies/contact', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
-      },
-      body: JSON.stringify({
-        agencyId: agency._id,
-        message: 'I am interested in your marketing services',
-        inquiryType: 'general'
-      })
-    });
+  const handleRequestProposal = async (agency, pkg) => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        toast.error('Please log in to request a proposal');
+        return;
+      }
 
-    const result = await response.json();
+      const additionalRequirements = document.querySelector('textarea')?.value || '';
 
-    if (response.ok) {
-      toast.success(`Contact request sent to ${agency.name}`);
-    } else {
-      throw new Error(result.error || 'Failed to send contact request');
+      const response = await fetch('/api/marketing-proposals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          agencyId: agency._id,
+          packageId: pkg._id,
+          packageName: pkg.name,
+          additionalRequirements,
+          budget: pkg.price,
+          timeline: pkg.duration,
+          category: pkg.category
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast.success(`Proposal request sent to ${agency.companyName || agency.name} for ${pkg.name}`);
+        setShowPackageModal(false);
+      } else {
+        throw new Error(result.error || 'Failed to submit proposal');
+      }
+    } catch (error) {
+      console.error('Error submitting proposal:', error);
+      toast.error(error.message || 'Failed to submit proposal request');
     }
-  } catch (error) {
-    console.error('Error contacting agency:', error);
-    toast.error(error.message || 'Failed to contact agency');
-  }
-};
+  };
+
+  const handleContactAgency = async (agency) => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        toast.error('Please log in to contact agencies');
+        return;
+      }
+      
+      const response = await fetch('/api/marketing-agencies/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          agencyId: agency._id,
+          agencyName: agency.companyName || agency.name,
+          message: 'I am interested in your marketing services and would like to learn more about your packages.',
+          inquiryType: 'general'
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast.success(`Contact request sent to ${agency.companyName || agency.name}`);
+        setShowAgencyModal(false);
+      } else {
+        throw new Error(result.error || 'Failed to send contact request');
+      }
+    } catch (error) {
+      console.error('Error contacting agency:', error);
+      toast.error(error.message || 'Failed to contact agency');
+    }
+  };
 
   const applyFilters = () => {
     let filtered = [...agencies];
@@ -316,50 +231,53 @@ const handleContactAgency = async (agency) => {
     if (searchTerm) {
       const searchTermLower = searchTerm.toLowerCase();
       filtered = filtered.filter(agency => {
-        const name = agency.name ? agency.name.toLowerCase() : '';
-        const description = agency.description ? agency.description.toLowerCase() : '';
+        const name = agency.companyName || agency.name || '';
+        const description = agency.description || '';
         const services = agency.services ? agency.services.join(' ').toLowerCase() : '';
         
         return (
-          name.includes(searchTermLower) ||
-          description.includes(searchTermLower) ||
+          name.toLowerCase().includes(searchTermLower) ||
+          description.toLowerCase().includes(searchTermLower) ||
           services.includes(searchTermLower)
         );
       });
     }
 
-    // Apply service filter
-    if (serviceFilter !== 'all') {
+    // Apply category filter
+    if (categoryFilter !== 'all') {
       filtered = filtered.filter(agency => 
-        agency.services && agency.services.includes(serviceFilter)
+        agency.services && agency.services.includes(categoryFilter)
       );
     }
 
     // Apply price range filter
     filtered = filtered.filter(agency => {
-      const minPackagePrice = Math.min(...agency.packages.map(p => p.price));
+      if (!agency.packages || agency.packages.length === 0) return false;
+      const minPackagePrice = Math.min(...agency.packages.map(p => p.price || 0));
       return minPackagePrice >= priceRange[0] && minPackagePrice <= priceRange[1];
     });
 
     // Apply rating filter
     if (ratingFilter > 0) {
-      filtered = filtered.filter(agency => agency.rating >= ratingFilter);
+      filtered = filtered.filter(agency => (agency.rating || 0) >= ratingFilter);
     }
 
     // Apply location filter
     if (locationFilter) {
-      filtered = filtered.filter(agency => 
-        agency.location.toLowerCase().includes(locationFilter.toLowerCase())
-      );
+      filtered = filtered.filter(agency => {
+        const location = agency.location || agency.companyDetails?.location || '';
+        return location.toLowerCase().includes(locationFilter.toLowerCase());
+      });
     }
 
     setFilteredAgencies(filtered);
   };
 
   const renderStars = (rating) => {
+    const actualRating = rating || 4.0;
     const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
+    const fullStars = Math.floor(actualRating);
+    const hasHalfStar = actualRating % 1 !== 0;
 
     for (let i = 0; i < fullStars; i++) {
       stars.push(<StarIconSolid key={i} className="h-5 w-5 text-yellow-400" />);
@@ -379,23 +297,51 @@ const handleContactAgency = async (agency) => {
 
   const getServiceIcon = (serviceType) => {
     switch (serviceType) {
-      case 'TV Advertising':
-        return <TvIcon className="h-5 w-5 text-blue-600" />;
       case 'Social Media Marketing':
-        return <ShareIcon className="h-5 w-5 text-purple-600" />;
-      case 'Creative Services':
-        return <PaintBrushIcon className="h-5 w-5 text-green-600" />;
+        return <ShareIcon className="h-4 w-4 text-purple-600" />;
+      case 'SEO & Content Marketing':
+        return <ChartBarIcon className="h-4 w-4 text-green-600" />;
+      case 'PPC Advertising':
+        return <CurrencyDollarIcon className="h-4 w-4 text-blue-600" />;
+      case 'Email Marketing':
+        return <EnvelopeIcon className="h-4 w-4 text-red-600" />;
+      case 'Video Marketing':
+        return <TvIcon className="h-4 w-4 text-orange-600" />;
+      case 'Web Design & Development':
+        return <PaintBrushIcon className="h-4 w-4 text-indigo-600" />;
       default:
-        return <BuildingStorefrontIcon className="h-5 w-5 text-gray-600" />;
+        return <MegaphoneIcon className="h-4 w-4 text-gray-600" />;
     }
+  };
+
+  const getStatusBadge = (status) => {
+    const actualStatus = status || 'active';
+    const statusColors = {
+      active: 'bg-green-100 text-green-800',
+      inactive: 'bg-gray-100 text-gray-800',
+      featured: 'bg-blue-100 text-blue-800'
+    };
+    
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[actualStatus] || 'bg-gray-100 text-gray-800'}`}>
+        {actualStatus}
+      </span>
+    );
   };
 
   const clearFilters = () => {
     setSearchTerm('');
-    setServiceFilter('all');
+    setCategoryFilter('all');
     setPriceRange([0, 10000]);
     setRatingFilter(0);
     setLocationFilter('');
+  };
+
+  const formatPrice = (price) => {
+    return price?.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }) || '0';
   };
 
   if (loading) {
@@ -421,81 +367,96 @@ const handleContactAgency = async (agency) => {
           Digital Marketing Agencies
         </h1>
         <p className="text-gray-600">
-          Discover professional marketing agencies offering TV slots, social media management, creative services, and more
+          Discover professional marketing agencies and their service packages. Find the perfect partner for your marketing needs.
         </p>
       </div>
 
       {/* Search and Filters */}
       <div className="bg-white rounded-lg p-6 border shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          {/* Search Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Search Agencies
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search by name, services..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
+        <div className="flex flex-col md:flex-row gap-4 mb-4">
+          <div className="flex-1 relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
             </div>
-          </div>
-
-          {/* Service Type Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Service Type
-            </label>
-            <select
-              value={serviceFilter}
-              onChange={(e) => setServiceFilter(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Services</option>
-              {serviceTypes.map(service => (
-                <option key={service} value={service}>{service}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Location Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Location
-            </label>
             <input
               type="text"
-              placeholder="Filter by location"
-              value={locationFilter}
-              onChange={(e) => setLocationFilter(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              placeholder="Search agencies by name, description, or services..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
             />
           </div>
 
-          {/* Rating Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Minimum Rating
-            </label>
-            <select
-              value={ratingFilter}
-              onChange={(e) => setRatingFilter(Number(e.target.value))}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            >
-              <option value={0}>Any Rating</option>
-              <option value={4.5}>4.5+ Stars</option>
-              <option value={4.0}>4.0+ Stars</option>
-              <option value={3.5}>3.5+ Stars</option>
-              <option value={3.0}>3.0+ Stars</option>
-            </select>
-          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+          >
+            <FunnelIcon className="h-5 w-5" />
+            Filters
+          </button>
         </div>
+
+        {showFilters && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border">
+            {/* Service Category Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Service Category
+              </label>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="all">All Categories</option>
+                {categoriesList.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Location Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Location
+              </label>
+              <input
+                type="text"
+                placeholder="Filter by location"
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            {/* Rating Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Minimum Rating
+              </label>
+              <select
+                value={ratingFilter}
+                onChange={(e) => setRatingFilter(Number(e.target.value))}
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
+              >
+                <option value={0}>Any Rating</option>
+                <option value={4.5}>4.5+ Stars</option>
+                <option value={4.0}>4.0+ Stars</option>
+                <option value={3.5}>3.5+ Stars</option>
+                <option value={3.0}>3.0+ Stars</option>
+              </select>
+            </div>
+
+            <div className="flex items-end">
+              <button
+                onClick={clearFilters}
+                className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Price Range Filter */}
         <div className="mb-4">
@@ -529,72 +490,94 @@ const handleContactAgency = async (agency) => {
           <span className="text-sm text-gray-600">
             Found {filteredAgencies.length} of {agencies.length} agencies
           </span>
-          <button
-            onClick={clearFilters}
-            className="text-sm text-blue-600 hover:text-blue-800"
-          >
-            Clear All Filters
-          </button>
+          {(searchTerm || categoryFilter !== 'all' || priceRange[0] > 0 || priceRange[1] < 10000 || ratingFilter > 0 || locationFilter) && (
+            <button
+              onClick={clearFilters}
+              className="text-sm text-purple-600 hover:text-purple-800"
+            >
+              Clear All Filters
+            </button>
+          )}
         </div>
       </div>
 
       {/* Agencies Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredAgencies.map((agency) => (
-          <div key={agency.id} className="bg-white rounded-lg border shadow-sm hover:shadow-md transition-shadow">
+          <div key={agency._id || agency.id} className="bg-white rounded-lg border shadow-sm hover:shadow-md transition-shadow">
             {/* Agency Header */}
             <div className="p-4 border-b">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                    <BuildingStorefrontIcon className="h-6 w-6 text-gray-600" />
+                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <BuildingStorefrontIcon className="h-6 w-6 text-purple-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">{agency.name}</h3>
+                    <h3 className="font-semibold text-lg">{agency.companyName || agency.name}</h3>
                     <div className="flex items-center space-x-1">
                       {renderStars(agency.rating)}
-                      <span className="text-sm text-gray-600">({agency.reviews})</span>
+                      <span className="text-sm text-gray-600">({agency.reviews} reviews)</span>
                     </div>
                   </div>
                 </div>
               </div>
               
-              <p className="text-gray-600 text-sm line-clamp-2">{agency.description}</p>
+              <p className="text-gray-600 text-sm line-clamp-2">
+                {agency.description || agency.companyDetails?.description || 'Professional marketing agency offering comprehensive digital marketing services.'}
+              </p>
             </div>
 
             {/* Agency Details */}
             <div className="p-4 space-y-3">
               <div className="flex items-center text-sm text-gray-600">
                 <MapPinIcon className="h-4 w-4 mr-2" />
-                {agency.location}
+                {agency.location || agency.companyDetails?.location || 'Location not specified'}
               </div>
 
               {/* Services */}
               <div>
                 <span className="text-sm font-medium text-gray-700">Services:</span>
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {agency.services.map((service, index) => (
+                  {agency.services?.slice(0, 3).map((service, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                      className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full"
                     >
                       {getServiceIcon(service)}
                       <span className="ml-1">{service}</span>
                     </span>
                   ))}
+                  {agency.services && agency.services.length > 3 && (
+                    <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">
+                      +{agency.services.length - 3} more
+                    </span>
+                  )}
                 </div>
               </div>
 
               {/* Packages Preview */}
               <div>
-                <span className="text-sm font-medium text-gray-700">Packages from:</span>
+                <span className="text-sm font-medium text-gray-700">Available Packages:</span>
                 <div className="mt-1 space-y-2">
-                  {agency.packages.slice(0, 2).map((pkg) => (
-                    <div key={pkg.id} className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">{pkg.name}</span>
-                      <span className="font-semibold">${pkg.price.toLocaleString()}</span>
+                  {agency.packages?.slice(0, 2).map((pkg) => (
+                    <div key={pkg._id || pkg.id} className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded">
+                      <div>
+                        <span className="font-medium text-gray-800">{pkg.name}</span>
+                        <div className="flex items-center gap-1 mt-1">
+                          <TagIcon className="h-3 w-3 text-gray-500" />
+                          <span className="text-xs text-gray-600">{pkg.category}</span>
+                        </div>
+                      </div>
+                      <span className="font-semibold text-purple-600">${formatPrice(pkg.price)}</span>
                     </div>
                   ))}
+                  {agency.packages && agency.packages.length > 2 && (
+                    <div className="text-center">
+                      <span className="text-xs text-gray-500">
+                        +{agency.packages.length - 2} more packages
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -607,7 +590,7 @@ const handleContactAgency = async (agency) => {
                     setSelectedAgency(agency);
                     setShowAgencyModal(true);
                   }}
-                  className="flex-1 bg-blue-600 text-white py-2 px-3 rounded-md hover:bg-blue-700 text-sm"
+                  className="flex-1 bg-purple-600 text-white py-2 px-3 rounded-md hover:bg-purple-700 text-sm"
                 >
                   View Details
                 </button>
@@ -624,19 +607,27 @@ const handleContactAgency = async (agency) => {
       </div>
 
       {/* No Results Message */}
-      {filteredAgencies.length === 0 && (
+      {filteredAgencies.length === 0 && !loading && (
         <div className="text-center py-12 bg-white rounded-lg border">
-          <BuildingStorefrontIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <MegaphoneIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No agencies found</h3>
           <p className="text-gray-500 mb-4">
-            Try adjusting your search criteria or clear filters to see more results.
+            {agencies.length === 0 
+              ? "No marketing agencies are currently available." 
+              : "Try adjusting your search criteria or clear filters to see more results."}
           </p>
-          <button
-            onClick={clearFilters}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-          >
-            Clear All Filters
-          </button>
+          {agencies.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Check back later or contact platform support for more information.
+            </p>
+          ) : (
+            <button
+              onClick={clearFilters}
+              className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
+            >
+              Clear All Filters
+            </button>
+          )}
         </div>
       )}
 
@@ -646,11 +637,11 @@ const handleContactAgency = async (agency) => {
           <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                  <BuildingStorefrontIcon className="h-8 w-8 text-gray-600" />
+                <div className="w-16 h-16 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <BuildingStorefrontIcon className="h-8 w-8 text-purple-600" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold">{selectedAgency.name}</h2>
+                  <h2 className="text-2xl font-bold">{selectedAgency.companyName || selectedAgency.name}</h2>
                   <div className="flex items-center space-x-2 mt-1">
                     {renderStars(selectedAgency.rating)}
                     <span className="text-gray-600">({selectedAgency.reviews} reviews)</span>
@@ -670,13 +661,15 @@ const handleContactAgency = async (agency) => {
               <div className="lg:col-span-2 space-y-6">
                 <div>
                   <h3 className="text-lg font-semibold mb-3">About</h3>
-                  <p className="text-gray-700">{selectedAgency.description}</p>
+                  <p className="text-gray-700">
+                    {selectedAgency.description || selectedAgency.companyDetails?.description || 'Professional marketing agency offering comprehensive digital marketing services.'}
+                  </p>
                 </div>
 
                 <div>
                   <h3 className="text-lg font-semibold mb-3">Services Offered</h3>
                   <div className="grid grid-cols-2 gap-3">
-                    {selectedAgency.services.map((service, index) => (
+                    {selectedAgency.services?.map((service, index) => (
                       <div key={index} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
                         {getServiceIcon(service)}
                         <span className="font-medium">{service}</span>
@@ -688,30 +681,63 @@ const handleContactAgency = async (agency) => {
                 <div>
                   <h3 className="text-lg font-semibold mb-3">Service Packages</h3>
                   <div className="space-y-4">
-                    {selectedAgency.packages.map((pkg) => (
-                      <div key={pkg.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    {selectedAgency.packages?.map((pkg) => (
+                      <div key={pkg._id || pkg.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                         <div className="flex justify-between items-start mb-2">
                           <div>
                             <h4 className="font-semibold">{pkg.name}</h4>
-                            <span className="text-sm text-gray-600">{pkg.type} • {pkg.duration}</span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
+                                {pkg.category}
+                              </span>
+                              {pkg.status && (
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  pkg.status === 'featured' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {pkg.status}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <span className="text-xl font-bold text-blue-600">${pkg.price.toLocaleString()}</span>
+                          <div className="text-right">
+                            <span className="text-xl font-bold text-purple-600">${formatPrice(pkg.price)}</span>
+                            <div className="flex items-center gap-1 text-sm text-gray-600 mt-1">
+                              <ClockIcon className="h-4 w-4" />
+                              <span>{pkg.duration} days</span>
+                            </div>
+                          </div>
                         </div>
                         <p className="text-gray-700 text-sm mb-3">{pkg.description}</p>
-                        <div className="space-y-1 mb-3">
-                          {pkg.features.map((feature, index) => (
-                            <div key={index} className="flex items-center text-sm">
-                              <CheckIcon className="h-4 w-4 text-green-500 mr-2" />
-                              {feature}
-                            </div>
-                          ))}
-                        </div>
+                        
+                        {pkg.features && pkg.features.length > 0 && (
+                          <div className="space-y-1 mb-3">
+                            {pkg.features.slice(0, 4).map((feature, index) => (
+                              <div key={index} className="flex items-center text-sm">
+                                <CheckIcon className="h-4 w-4 text-green-500 mr-2" />
+                                <span className="line-clamp-1">{feature}</span>
+                              </div>
+                            ))}
+                            {pkg.features.length > 4 && (
+                              <div className="text-sm text-gray-500 text-center">
+                                +{pkg.features.length - 4} more features
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {pkg.successRate && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+                            <ChartBarIcon className="h-4 w-4" />
+                            <span>{pkg.successRate}% success rate</span>
+                          </div>
+                        )}
+
                         <button
                           onClick={() => {
                             setSelectedPackage(pkg);
                             setShowPackageModal(true);
                           }}
-                          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+                          className="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700"
                         >
                           Request Proposal
                         </button>
@@ -726,21 +752,25 @@ const handleContactAgency = async (agency) => {
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h3 className="text-lg font-semibold mb-3">Contact Information</h3>
                   <div className="space-y-3">
-                    <div className="flex items-center text-gray-700">
-                      <PhoneIcon className="h-5 w-5 mr-3" />
-                      {selectedAgency.contact.phone}
-                    </div>
+                    {selectedAgency.contact?.phone && (
+                      <div className="flex items-center text-gray-700">
+                        <PhoneIcon className="h-5 w-5 mr-3" />
+                        {selectedAgency.contact.phone}
+                      </div>
+                    )}
                     <div className="flex items-center text-gray-700">
                       <EnvelopeIcon className="h-5 w-5 mr-3" />
-                      {selectedAgency.contact.email}
+                      {selectedAgency.email || selectedAgency.contact?.email}
                     </div>
-                    <div className="flex items-center text-gray-700">
-                      <GlobeAltIcon className="h-5 w-5 mr-3" />
-                      {selectedAgency.contact.website}
-                    </div>
+                    {selectedAgency.contact?.website && (
+                      <div className="flex items-center text-gray-700">
+                        <GlobeAltIcon className="h-5 w-5 mr-3" />
+                        {selectedAgency.contact.website}
+                      </div>
+                    )}
                     <div className="flex items-center text-gray-700">
                       <MapPinIcon className="h-5 w-5 mr-3" />
-                      {selectedAgency.location}
+                      {selectedAgency.location || selectedAgency.companyDetails?.location || 'Location not specified'}
                     </div>
                   </div>
                   <button
@@ -786,16 +816,19 @@ const handleContactAgency = async (agency) => {
             
             <div className="space-y-4 mb-6">
               <div>
-                <strong>Agency:</strong> {selectedAgency.name}
+                <strong>Agency:</strong> {selectedAgency.companyName || selectedAgency.name}
               </div>
               <div>
                 <strong>Package:</strong> {selectedPackage.name}
               </div>
               <div>
-                <strong>Price:</strong> ${selectedPackage.price.toLocaleString()}
+                <strong>Category:</strong> {selectedPackage.category}
               </div>
               <div>
-                <strong>Duration:</strong> {selectedPackage.duration}
+                <strong>Price:</strong> ${formatPrice(selectedPackage.price)}
+              </div>
+              <div>
+                <strong>Duration:</strong> {selectedPackage.duration} days
               </div>
               
               <div>
@@ -804,7 +837,7 @@ const handleContactAgency = async (agency) => {
                 </label>
                 <textarea
                   rows={4}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
                   placeholder="Describe any specific requirements or customization needs..."
                 />
               </div>
@@ -819,7 +852,7 @@ const handleContactAgency = async (agency) => {
               </button>
               <button
                 onClick={() => handleRequestProposal(selectedAgency, selectedPackage)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
               >
                 Send Request
               </button>
