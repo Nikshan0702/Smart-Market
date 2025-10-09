@@ -90,10 +90,131 @@
 // }
 
 
-import { NextResponse } from "next/server";
+
+// app/api/users/route.js
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/libs/auth";
 import connectMongoDB from "@/libs/mongodb";
-import bcrypt from 'bcryptjs';
 import User from "@/Models/user";
+import jwt from 'jsonwebtoken';
+import { NextResponse } from "next/server";
+import bcrypt from 'bcryptjs';
+
+export async function GET(request) {
+  try {
+    await connectMongoDB();
+    console.log("Fetching users request received");
+    
+    const { searchParams } = new URL(request.url);
+    const role = searchParams.get('role');
+
+    console.log("Role filter:", role);
+
+    // Build query
+    let query = {};
+    if (role) {
+      query.role = role;
+    }
+
+    // Check authentication via both methods
+    let userId = null;
+    
+    const session = await getServerSession(authOptions);
+    if (session?.user?.id) {
+      userId = session.user.id;
+      console.log("Authenticated via NextAuth session. User ID:", userId);
+    } else {
+      const authHeader = request.headers.get('Authorization');
+      console.log("Auth header:", authHeader);
+      
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        
+        try {
+          if (!process.env.JWT_SECRET) {
+            throw new Error("JWT secret not configured");
+          }
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          console.log("Decoded token:", decoded);
+          
+          userId = decoded.userId || decoded.id;
+          
+          if (!userId) {
+            console.error("Token does not contain user ID");
+            return new Response(
+              JSON.stringify({ error: "Invalid token format" }),
+              {
+                status: 401,
+                headers: { "Content-Type": "application/json" },
+              }
+            );
+          }
+          console.log("Authenticated via JWT token. User ID:", userId);
+        } catch (tokenError) {
+          console.error("Token verification error:", tokenError);
+          return new Response(
+            JSON.stringify({ error: "Invalid or expired token" }),
+            {
+              status: 401,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+      }
+    }
+
+    if (!userId) {
+      console.log("No valid authentication found");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized. Please log in." }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Fetch users
+    const users = await User.find(query).select('-password');
+
+    console.log(`Found ${users.length} users with role: ${role || 'any'}`);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true,
+        users: users.map(user => ({
+          _id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+          companyName: user.companyDetails?.name,
+          companyDetails: user.companyDetails,
+          description: user.description,
+          location: user.location,
+          phone: user.phone,
+          rating: user.rating,
+          reviews: user.reviews,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt
+        }))
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to fetch users" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
+}
 
 export async function POST(request) {
   try {

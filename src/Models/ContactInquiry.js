@@ -2,47 +2,46 @@
 import mongoose from 'mongoose';
 
 const contactInquirySchema = new mongoose.Schema({
-  corporate: {
+  client: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
   agency: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'MarketingAgency',
+    ref: 'User',
     required: true
+  },
+  inquiryType: {
+    type: String,
+    enum: ['general', 'specific-package', 'custom-project', 'partnership'],
+    default: 'general'
   },
   message: {
     type: String,
     required: true
   },
-  inquiryType: {
-    type: String,
-    enum: ['general', 'proposal', 'partnership', 'custom'],
-    default: 'general'
-  },
   status: {
     type: String,
-    enum: ['new', 'contacted', 'resolved'],
+    enum: ['new', 'contacted', 'in-progress', 'resolved', 'spam'],
     default: 'new'
   },
-  response: {
+  agencyResponse: {
     message: String,
     respondedAt: Date
   },
-  createdAt: {
+  submittedAt: {
     type: Date,
     default: Date.now
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  respondedAt: {
+    type: Date
   }
+}, {
+  timestamps: true
 });
 
-contactInquirySchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
+contactInquirySchema.index({ client: 1, submittedAt: -1 });
+contactInquirySchema.index({ agency: 1, status: 1 });
 
 export default mongoose.models.ContactInquiry || mongoose.model('ContactInquiry', contactInquirySchema);
