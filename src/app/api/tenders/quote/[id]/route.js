@@ -4,14 +4,18 @@ import { authOptions } from "@/libs/auth";
 import connectMongoDB from "@/libs/mongodb";
 import TenderQuote from "@/Models/TenderQuote";
 import Tender from "@/Models/Tender";
+import User from "@/Models/user";
 import jwt from 'jsonwebtoken';
+import { ProofOfOrderGenerator } from '@/libs/pdfGenerator';
 
 export async function PUT(request, { params }) {
   try {
     await connectMongoDB();
     
-    const { id } =  await params;
+    const { id } = await params;
     const { status } = await request.json();
+    
+    console.log('Updating quote status:', { id, status });
     
     let userId = null;
     
@@ -49,7 +53,10 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const quote = await TenderQuote.findById(id).populate("tender");
+    // Find the quote with populated data
+    const quote = await TenderQuote.findById(id)
+      .populate("tender")
+      .populate("dealer", "firstName lastName email companyDetails");
     
     if (!quote) {
       return new Response(
@@ -66,12 +73,65 @@ export async function PUT(request, { params }) {
       );
     }
     
+    // Update quote status
     quote.status = status;
+    
+    // Handle proof of order generation for approved quotes
+    if (status === 'approved') {
+      try {
+        console.log('Generating proof of order for approved quote...');
+        
+        // Find the company/user who created the tender
+        const company = await User.findById(quote.tender.createdBy)
+          .select('firstName lastName email companyDetails role');
+        
+        if (!company) {
+          console.error('Company not found for tender creator:', quote.tender.createdBy);
+          throw new Error('Company not found');
+        }
+
+        console.log('Company found:', company.companyDetails?.name || company.firstName);
+        console.log('Dealer found:', quote.dealer.companyDetails?.name || quote.dealer.firstName);
+        
+        // Generate proof of order PDF
+        const base64PDF = ProofOfOrderGenerator.generateBase64PDF(
+          quote.tender,
+          quote,
+          company,
+          quote.dealer
+        );
+        
+        // Extract just the base64 data (remove data:application/pdf;base64, prefix)
+        const base64Data = base64PDF.split(',')[1];
+        
+        // Store the PDF data with the quote
+        quote.proofOfOrder = {
+          generatedAt: new Date(),
+          pdfData: base64Data,
+          orderNumber: `PO-${quote.tender._id.toString().slice(-8).toUpperCase()}-${quote._id.toString().slice(-6).toUpperCase()}`
+        };
+        
+        console.log('Proof of order generated successfully for quote:', id);
+        console.log('Order number:', quote.proofOfOrder.orderNumber);
+
+      } catch (pdfError) {
+        console.error('Error generating proof of order:', pdfError);
+        // Don't fail the whole request if PDF generation fails
+        // The quote status will still be updated
+      }
+    } else if (status === 'rejected' || status === 'submitted') {
+      // Clear proof of order if status changes from approved
+      quote.proofOfOrder = undefined;
+    }
+    
     await quote.save();
     
-    await quote.populate("dealer", "firstName lastName companyDetails");
+    // Populate for response
+    const updatedQuote = await TenderQuote.findById(id)
+      .populate("dealer", "firstName lastName companyDetails")
+      .populate("tender");
     
-    return new Response(JSON.stringify(quote), {
+    return new Response(JSON.stringify(updatedQuote), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

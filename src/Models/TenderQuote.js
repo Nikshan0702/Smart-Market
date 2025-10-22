@@ -27,6 +27,20 @@ const TenderQuoteSchema = new mongoose.Schema({
     enum: ['submitted', 'approved', 'rejected'],
     default: 'submitted',
   },
+  proofOfOrder: {
+    generatedAt: {
+      type: Date,
+    },
+    pdfData: {
+      type: String, // Base64 encoded PDF
+    },
+    orderNumber: {
+      type: String,
+    },
+    downloadUrl: {
+      type: String, // Optional: URL if stored externally
+    }
+  }
 }, {
   timestamps: true,
 });
@@ -38,8 +52,13 @@ TenderQuoteSchema.virtual('quotes', {
   foreignField: 'tender',
 });
 
+// Index for faster queries
+TenderQuoteSchema.index({ tender: 1, dealer: 1 }, { unique: true });
+TenderQuoteSchema.index({ status: 1 });
+TenderQuoteSchema.index({ createdAt: 1 });
+
 // Enable virtuals in JSON output
 TenderQuoteSchema.set('toJSON', { virtuals: true });
 TenderQuoteSchema.set('toObject', { virtuals: true });
 
-module.exports = mongoose.models.TenderQuote || mongoose.model('TenderQuote', TenderQuoteSchema);
+module.exports = mongoose.models.TenderQuote || mongoose.model('TenderQuote', TenderQuoteSchema); 
