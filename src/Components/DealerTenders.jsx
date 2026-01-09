@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { 
   EyeIcon, 
   DocumentArrowUpIcon,
+  DocumentArrowDownIcon,
   CalendarIcon,
   CurrencyDollarIcon,
   MapPinIcon,
@@ -82,6 +83,70 @@ const DealerTenders = () => {
       setLoading(false);
     }
   };
+
+  const downloadProofOfOrder = async (quoteId) => {
+  try {
+    console.log('Attempting to download proof of order for quote:', quoteId);
+    
+    const authToken = localStorage.getItem('authToken');
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
+    }
+    
+    const response = await fetch(`/api/tenders/quote/${quoteId}/proof-of-order`, {
+      headers,
+      credentials: "include",
+    });
+
+    console.log('Download response status:', response.status);
+
+    if (response.ok) {
+      const blob = await response.blob();
+      console.log('Blob received, size:', blob.size);
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      
+      // Get filename from content-disposition header
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = `proof-of-order-${quoteId}.pdf`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success('Proof of order downloaded successfully!');
+    } else {
+      // Try to get error message from response
+      let errorMessage = 'Failed to download proof of order';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+        console.log('Error details:', errorData);
+      } catch (e) {
+        console.log('Could not parse error response');
+      }
+      throw new Error(errorMessage);
+    }
+  } catch (error) {
+    console.error('Error downloading proof of order:', error);
+    toast.error(error.message || 'Failed to download proof of order');
+  }
+};
 
   const applyFilters = () => {
     let filtered = [...tenders];
@@ -340,22 +405,6 @@ const DealerTenders = () => {
         {/* Expanded Filters */}
         {showFilters && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border">
-            {/* Status Filter */}
-            {/* <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="closed">Closed</option>
-              </select>
-            </div> */}
-
             {/* Category Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -604,6 +653,29 @@ const DealerTenders = () => {
                   <p className="mt-1 text-sm text-gray-600">
                     <span className="font-medium">Your quote:</span> ${selectedTender.userQuote.budget}
                   </p>
+                )}
+
+                {/* PROOF OF ORDER SECTION - ADDED HERE */}
+                {selectedTender.userQuote.status === 'approved' && (
+                  <div className="mt-4 p-3 bg-green-50 rounded-md border border-green-200">
+                    <h4 className="font-medium text-green-800 mb-2 flex items-center gap-2">
+                      <CheckCircleIcon className="h-5 w-5" />
+                      Quote Approved!
+                    </h4>
+                    <p className="text-sm text-green-700 mb-3">
+                      Congratulations! Your quote has been approved. You can now download the official proof of order.
+                    </p>
+                    <button
+                      onClick={() => downloadProofOfOrder(selectedTender.userQuote._id)}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                    >
+                      <DocumentArrowDownIcon className="h-4 w-4" />
+                      Download Proof of Order
+                    </button>
+                    <p className="text-xs text-green-600 mt-2">
+                      This document serves as official confirmation of your approved quote.
+                    </p>
+                  </div>
                 )}
               </div>
             )}

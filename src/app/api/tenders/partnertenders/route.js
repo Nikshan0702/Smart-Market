@@ -51,7 +51,7 @@ export async function GET(request) {
     // Get tenders from these companies
     const tenders = await Tender.find({
       createdBy: { $in: companyIds },
-      status: "active"
+      
     }).populate('createdBy', 'name')
       .sort({ createdAt: -1 });
 
